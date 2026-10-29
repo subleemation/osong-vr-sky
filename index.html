@@ -178,7 +178,7 @@ button.pill { cursor: pointer; }
           <button class="chip" type="button" id="calib" aria-pressed="false">폰 뒷면을 남쪽에 맞추고 누르기</button>
         </div>
       </div>
-      <p class="sub" style="font-size:14px">별이 둘로 갈라져 보이면 간격을 조금씩 옮겨 보세요. 헤드셋의 다이얼(렌즈 거리, 미간)도 함께 맞추면 좋아요.</p>
+      <p class="sub" style="font-size:14px">이 설정은 VR 안에서도 바꿀 수 있어요. 헤드셋을 쓰고 아래를 내려다보세요. 별이 둘로 갈라져 보이면 간격을 조금씩 옮겨 보세요. 헤드셋의 다이얼(렌즈 거리, 미간)도 함께 맞추면 좋아요.</p>
     </section>
 
     <section class="card" aria-labelledby="hHow">
@@ -188,7 +188,8 @@ button.pill { cursor: pointer; }
         <li>폰을 <b>가로로</b> 돌려 헤드셋에 넣어요.</li>
         <li><b>앉아서</b> 고개를 천천히 돌리며 하늘을 둘러봐요.</li>
         <li>가운데 동그라미로 별자리를 바라보면 설명이 나와요.</li>
-        <li>메뉴로 돌아오려면 화면을 <b>두 번 톡톡</b> 눌러요.</li>
+        <li>별이 둘로 보이거나 방향이 어긋나면 <b>고개를 숙여 아래를 보세요.</b> 설정판이 나오고, 버튼을 1초쯤 바라보면 눌려요. 폰을 빼지 않아도 돼요.</li>
+        <li>메뉴로 돌아오려면 설정판의 <b>메뉴로</b> 버튼을 바라보거나, 화면을 <b>두 번 톡톡</b> 눌러요.</li>
       </ol>
       <p class="sub" style="font-size:14px">어지러우면 바로 벗고 쉬어요. 어린이는 3분 정도만 보는 게 좋아요.</p>
     </section>
@@ -686,9 +687,17 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
         tryText(view, DSO[di].name, P[0], P[1] + fontPx * 1.25, Math.round(fontPx * 0.85), LABEL_FONT, 'rgba(200,220,255,0.8)', 'center');
       }
     }
+    if (view.vr && PANEL.open) drawPanel(view, fontPx);
     // reticle
     c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 1.5;
     c.beginPath(); c.arc(view.cx, view.cy, fontPx * 0.7, 0, Math.PI * 2); c.stroke();
+    if (view.vr && !PANEL.open && performance.now() - (st.vrT || 0) < 12000) {
+      c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
+      var hint = '↓ 아래를 내려다보면 설정이 나와요';
+      var hw = c.measureText(hint).width;
+      c.fillStyle = 'rgba(8,12,32,0.8)'; roundRect(view.cx - hw / 2 - 10, view.cy + view.R * 0.66 - fontPx * 0.8, hw + 20, fontPx * 1.6, fontPx * 0.8); c.fill();
+      c.fillStyle = '#ffd77a'; c.fillText(hint, view.cx, view.cy + view.R * 0.66);
+    }
     // vignette for lenses, then the heads-up text on top
     if (view.vr) {
       var vg = c.createRadialGradient(view.cx, view.cy, view.R * 0.92, view.cx, view.cy, view.R * 1.25);
@@ -929,6 +938,132 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   // ---------- main loop ----------
   var LABEL_FONT = '"Jua", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif';
   var BODY_FONT = '"Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif';
+  // ---------- gaze settings panel (look down at your feet, stare at a button ~1 s) ----------
+  var PANEL = { open: false, yaw: 180, lastAz: 180, id: null, t: 0, repeat: 0, toast: '', toastT: 0 };
+  var DWELL = 0.9, REPEAT = 0.4;
+  var BTNS = [
+    { id: 'ipd-', x: -0.26, y: 0.31, w: 0.17, h: 0.15, label: '−', rep: true },
+    { id: 'ipd+', x: 0.26, y: 0.31, w: 0.17, h: 0.15, label: '+', rep: true },
+    { id: 'warp-', x: -0.26, y: 0.11, w: 0.17, h: 0.15, label: '−', rep: true },
+    { id: 'warp+', x: 0.26, y: 0.11, w: 0.17, h: 0.15, label: '+', rep: true },
+    { id: 'fov-', x: -0.26, y: -0.09, w: 0.17, h: 0.15, label: '−', rep: true },
+    { id: 'fov+', x: 0.26, y: -0.09, w: 0.17, h: 0.15, label: '+', rep: true },
+    { id: 'south', x: -0.5, y: -0.31, w: 0.62, h: 0.16, label: '이 방향이 남쪽' },
+    { id: 'menu', x: 0.18, y: -0.31, w: 0.3, h: 0.16, label: '메뉴로' }
+  ];
+  var ROWS = [
+    { y: 0.31, name: '두 화면 간격', val: function () { return st.ipdAdj === 0 ? '기본' : (st.ipdAdj > 0 ? '+' : '') + st.ipdAdj; } },
+    { y: 0.11, name: '렌즈 보정', val: function () { return st.warp < 0.1 ? '끔' : Math.round(st.warp * 10); } },
+    { y: -0.09, name: '보이는 넓이', val: function () { return st.fov + '°'; } }
+  ];
+  // The panel is a flat card standing 45 deg below the horizon, facing the viewer, in the heading you looked at before bowing your head.
+  var PITCH = 45 * D2R;
+  function panelBasis() {
+    var a = PANEL.yaw * D2R, sa = Math.sin(a), ca = Math.cos(a), cp = Math.cos(PITCH), sp = Math.sin(PITCH);
+    var r = [ca, -sa, 0], c = [sa * cp, ca * cp, -sp];
+    var u = [r[1] * c[2] - r[2] * c[1], r[2] * c[0] - r[0] * c[2], r[0] * c[1] - r[1] * c[0]];
+    return { r: r, c: c, u: u };
+  }
+  function planePt(view, x, y, out) {
+    var B = panelBasis(), cam = st.cam;
+    var e = B.c[0] + B.r[0] * x + B.u[0] * y, n = B.c[1] + B.r[1] * x + B.u[1] * y, u = B.c[2] + B.r[2] * x + B.u[2] * y;
+    var l = Math.hypot(e, n, u); e /= l; n /= l; u /= l;
+    var cx = e * cam.r[0] + n * cam.r[1] + u * cam.r[2];
+    var cy = e * cam.u[0] + n * cam.u[1] + u * cam.u[2];
+    var cz = e * cam.f[0] + n * cam.f[1] + u * cam.f[2];
+    return proj(view, cx, cy, cz, out);
+  }
+  function applyBtn(id) {
+    var changed = true;
+    if (id === 'ipd-') st.ipdAdj = Math.max(-60, st.ipdAdj - 4);
+    else if (id === 'ipd+') st.ipdAdj = Math.min(60, st.ipdAdj + 4);
+    else if (id === 'warp-') st.warp = Math.max(0, Math.round((st.warp - 0.1) * 10) / 10);
+    else if (id === 'warp+') st.warp = Math.min(0.8, Math.round((st.warp + 0.1) * 10) / 10);
+    else if (id === 'fov-') st.fov = Math.max(70, st.fov - 5);
+    else if (id === 'fov+') st.fov = Math.min(120, st.fov + 5);
+    else if (id === 'south') {
+      var cur = st.headingOffset;
+      st.headingOffset = (((cur + (PANEL.yaw - 180)) % 360) + 360) % 360;
+      PANEL.yaw = 180; PANEL.lastAz = 180;
+      PANEL.toast = '맞췄어요!'; PANEL.toastT = 1.6;
+      saveSettings();
+      return;
+    } else if (id === 'menu') { leave(); return; }
+    else changed = false;
+    if (changed) {
+      $('ipd').value = st.ipdAdj; $('warp').value = st.warp; $('fov').value = st.fov;
+      syncVrLabels(); saveSettings();
+    }
+  }
+  function updatePanel(dt) {
+    if (PANEL.toastT > 0) PANEL.toastT -= dt;
+    if (st.mode !== 'vr') { PANEL.open = false; PANEL.id = null; return; }
+    var f = st.cam.f, pitch = Math.asin(Math.max(-1, Math.min(1, f[2]))) / D2R;
+    if (pitch > -30) PANEL.lastAz = C.enuToAltAz(f).az;
+    if (!PANEL.open && pitch < -36) { PANEL.open = true; PANEL.yaw = PANEL.lastAz; PANEL.id = null; PANEL.t = 0; }
+    else if (PANEL.open && pitch > -16) { PANEL.open = false; PANEL.id = null; }
+    if (!PANEL.open) return;
+    var B = panelBasis(), fc = f[0] * B.c[0] + f[1] * B.c[1] + f[2] * B.c[2], hit = null;
+    if (fc > 0.3) {
+      var gx = (f[0] * B.r[0] + f[1] * B.r[1] + f[2] * B.r[2]) / fc, gy = (f[0] * B.u[0] + f[1] * B.u[1] + f[2] * B.u[2]) / fc;
+      for (var i = 0; i < BTNS.length; i++) {
+        var b = BTNS[i];
+        if (Math.abs(gx - b.x) < b.w / 2 + 0.02 && Math.abs(gy - b.y) < b.h / 2 + 0.02) { hit = b; break; }
+      }
+    }
+    if (!hit) { PANEL.id = null; PANEL.t = 0; return; }
+    if (PANEL.id !== hit.id) { PANEL.id = hit.id; PANEL.t = 0; PANEL.repeat = 0; return; }
+    PANEL.t += dt;
+    if (PANEL.t >= DWELL) {
+      if (hit.rep) {
+        PANEL.repeat += dt;
+        if (PANEL.repeat >= REPEAT || PANEL.repeat === dt) { PANEL.repeat = 0.0001; applyBtn(hit.id); }
+      } else { applyBtn(hit.id); PANEL.id = null; PANEL.t = -0.8; }
+    }
+  }
+  function drawPanel(view, fontPx) {
+    var c = ctx, A = [0, 0], Bp = [0, 0], Cp = [0, 0], Dp = [0, 0];
+    function quad(x, y, w, h) {
+      var ok = planePt(view, x - w / 2, y + h / 2, A) & planePt(view, x + w / 2, y + h / 2, Bp) &
+               planePt(view, x + w / 2, y - h / 2, Cp) & planePt(view, x - w / 2, y - h / 2, Dp);
+      if (!ok) return false;
+      c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(Bp[0], Bp[1]); c.lineTo(Cp[0], Cp[1]); c.lineTo(Dp[0], Dp[1]); c.closePath();
+      return true;
+    }
+    function hpx() { return Math.hypot(A[0] - Dp[0], A[1] - Dp[1]); }
+    function center(x, y, out) { return planePt(view, x, y, out); }
+    // backdrop
+    if (quad(0, -0.04, 1.42, 1.04)) { c.fillStyle = 'rgba(8,12,32,0.93)'; c.fill(); c.strokeStyle = 'rgba(255,215,122,0.4)'; c.lineWidth = 1.5; c.stroke(); }
+    c.textBaseline = 'middle';
+    var P2 = [0, 0];
+    // title
+    if (center(0, 0.48, P2)) { c.font = Math.round(fontPx * 1.05) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#ffd77a'; c.fillText('설정 · 버튼을 1초 바라보세요', P2[0], P2[1]); }
+    // row labels + values
+    for (var r = 0; r < ROWS.length; r++) {
+      if (center(-0.76, ROWS[r].y, P2)) { c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.textAlign = 'right'; c.fillStyle = 'rgba(238,241,255,0.9)'; c.fillText(ROWS[r].name, P2[0] + fontPx * 3.2, P2[1]); }
+      if (center(0, ROWS[r].y, P2)) { c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#ffffff'; c.fillText(String(ROWS[r].val()), P2[0], P2[1]); }
+    }
+    // buttons
+    for (var i = 0; i < BTNS.length; i++) {
+      var b = BTNS[i];
+      if (!quad(b.x, b.y, b.w, b.h)) continue;
+      var active = PANEL.id === b.id, prog = active ? Math.max(0, Math.min(1, PANEL.t / DWELL)) : 0;
+      c.fillStyle = active ? 'rgba(255,215,122,' + (0.25 + 0.55 * prog) + ')' : 'rgba(60,80,150,0.55)';
+      c.fill(); c.strokeStyle = active ? '#ffd77a' : 'rgba(160,180,255,0.5)'; c.lineWidth = 1.5; c.stroke();
+      if (center(b.x, b.y, P2)) {
+        c.font = Math.round(Math.max(fontPx * 0.9, hpx() * (b.label.length > 2 ? 0.38 : 0.7))) + 'px ' + LABEL_FONT;
+        c.textAlign = 'center'; c.fillStyle = active ? '#fff' : 'rgba(238,241,255,0.95)'; c.fillText(b.label, P2[0], P2[1]);
+      }
+    }
+    if (PANEL.toastT > 0 && center(0, -0.44, P2)) { c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#9fe8b0'; c.fillText(PANEL.toast, P2[0], P2[1]); }
+    // dwell ring around the reticle
+    if (PANEL.id && PANEL.t > 0) {
+      var pr = Math.min(1, PANEL.t / DWELL);
+      c.strokeStyle = '#ffd77a'; c.lineWidth = Math.max(3, fontPx * 0.28);
+      c.beginPath(); c.arc(view.cx, view.cy, fontPx * 1.15, -Math.PI / 2, -Math.PI / 2 + pr * Math.PI * 2); c.stroke();
+    }
+  }
+
   var last = performance.now(), lastInfoKey = '';
   function loop(now) {
     var dt = Math.min(0.1, (now - last) / 1000); last = now;
@@ -944,10 +1079,11 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
       target = cameraFromYawPitch();
     }
     smoothCam(target);
+    updatePanel(dt);
     computeFrame();
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    var sel = st.mode === 'menu' ? null : pickTarget();
+    var sel = (st.mode === 'menu' || (st.mode === 'vr' && PANEL.open)) ? null : pickTarget();
     if (st.mode === 'vr') {
       var half = W / 2;
       var sep = Math.min(half * 1.02, baseSep() + st.ipdAdj);
@@ -1026,7 +1162,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   function note(t) { var n = $('sensorNote'); n.textContent = t; n.hidden = !t; }
 
   function enter(mode) {
-    st.mode = mode;
+    st.mode = mode; st.vrT = performance.now(); PANEL.open = false; PANEL.id = null;
     $('menu').hidden = true;
     $('hud').hidden = mode !== 'screen';
     $('hint').hidden = mode !== 'screen';
