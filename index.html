@@ -102,6 +102,25 @@ button.pill { cursor: pointer; }
 
 #rotate { position: fixed; inset: 0; background: var(--night); display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; font-family: var(--font-display); font-size: 24px; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* first-run guide shown before VR starts */
+#guide { position: fixed; inset: 0; z-index: 20; background: var(--night); overflow-y: auto;
+  display: flex; align-items: center; justify-content: center;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(12px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)); }
+.gbox { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 12px; margin: auto; }
+.gstep { font-size: 14px; color: var(--star); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.gbox h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 6vw, 36px); line-height: 1.2; text-wrap: balance; }
+.gbox p { margin: 0; font-size: clamp(17px, 3.6vw, 21px); line-height: 1.6; color: var(--ink); }
+.gcount { font-family: var(--font-display); font-size: 22px; color: var(--dusk); min-height: 1.4em; font-variant-numeric: tabular-nums; }
+.gbtns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.gbtns .btn { padding: 12px; font-size: 19px; }
+.gmore { display: flex; justify-content: space-between; gap: 8px; }
+.linkbtn { appearance: none; background: none; border: 0; color: var(--muted); font-family: var(--font-body); font-size: 15px; padding: 8px 4px; cursor: pointer; text-decoration: underline; }
+.linkbtn:focus-visible { outline: 3px solid var(--star); outline-offset: 2px; }
+.gdots { display: flex; gap: 6px; }
+.gdots i { width: 22px; height: 4px; border-radius: 2px; background: var(--line); }
+.gdots i.on { background: var(--star); }
 </style>
 
 </head>
@@ -205,6 +224,24 @@ button.pill { cursor: pointer; }
   </div>
   <div id="hint">끌어서 둘러보기 · 두 손가락으로 확대</div>
   <div id="info" hidden><div id="infoName"></div><div id="infoText"></div></div>
+</div>
+
+<div id="guide" hidden role="dialog" aria-modal="true" aria-label="VR 사용 안내">
+  <div class="gbox">
+    <div class="gdots" id="gDots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="gstep" id="gStep"></div>
+    <h2 id="gTitle"></h2>
+    <p id="gText"></p>
+    <div class="gcount" id="gCount" aria-live="polite"></div>
+    <div class="gbtns">
+      <button class="btn" id="gBack" type="button">이전</button>
+      <button class="btn primary" id="gNext" type="button">다음</button>
+    </div>
+    <div class="gmore">
+      <button class="linkbtn" id="gSkip" type="button">안내 건너뛰고 바로 시작</button>
+      <button class="linkbtn" id="gCancel" type="button">취소</button>
+    </div>
+  </div>
 </div>
 
 <div id="rotate" hidden>폰을 <br>가로로 돌려주세요</div>
@@ -1172,12 +1209,44 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { st.lock = l; }).catch(function () {}); } catch (e) {}
   }
   function leave() {
-    st.mode = 'menu';
+    st.mode = 'menu'; try { $('guide').hidden = true; } catch (e) {}
     $('menu').hidden = false; $('hud').hidden = true; $('rotate').hidden = true;
     try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {}); } catch (e) {}
     try { if (st.lock) { st.lock.release(); st.lock = null; } } catch (e) {}
     st.pitch = 30;
   }
+  // ---- first-run guide: 4 short cards, the last one counts down while you put the phone into the headset ----
+  var GUIDE = [
+    { t: '앉아서 천천히 둘러봐요', x: '의자에 앉아서 고개를 천천히 돌리면 하늘이 따라와요. 서서 보면 넘어질 수 있어요.' },
+    { t: '바라보면 설명이 나와요', x: '화면 가운데 동그라미로 별자리나 토성을 바라보세요. 이름과 이야기가 나타나요.' },
+    { t: '잘 안 보이면 아래를 봐요', x: '별이 둘로 보이면 고개를 숙여 아래를 보세요. 설정판이 나와요. 버튼을 1초 바라보면 눌려요. 어지러우면 바로 벗고 쉬어요.' },
+    { t: '폰을 헤드셋에 넣어요', x: '폰을 가로로 돌려 헤드셋 가운데에 끼우고 쓰세요.' }
+  ];
+  var gi = 0, gTimer = null, gLeft = 0;
+  function gClear() { if (gTimer) { clearInterval(gTimer); gTimer = null; } }
+  function gRender() {
+    var last = gi === GUIDE.length - 1;
+    $('gStep').textContent = (gi + 1) + ' / ' + GUIDE.length;
+    $('gTitle').textContent = GUIDE[gi].t; $('gText').textContent = GUIDE[gi].x;
+    $('gBack').style.visibility = gi === 0 ? 'hidden' : 'visible';
+    $('gNext').textContent = last ? '지금 시작' : '다음';
+    var dots = $('gDots').children; for (var k = 0; k < dots.length; k++) dots[k].className = k === gi ? 'on' : '';
+    gClear(); $('gCount').textContent = '';
+    if (last) {
+      gLeft = 8; $('gCount').textContent = gLeft + '초 뒤에 시작해요';
+      gTimer = setInterval(function () {
+        gLeft--; if (gLeft <= 0) { gStart(); return; }
+        $('gCount').textContent = gLeft + '초 뒤에 시작해요';
+      }, 1000);
+    }
+  }
+  function gStart() { gClear(); $('guide').hidden = true; enter('vr'); }
+  function gClose() { gClear(); $('guide').hidden = true; }
+  $('gNext').addEventListener('click', function () { if (gi < GUIDE.length - 1) { gi++; gRender(); } else gStart(); });
+  $('gBack').addEventListener('click', function () { if (gi > 0) { gi--; gRender(); } });
+  $('gSkip').addEventListener('click', gStart);
+  $('gCancel').addEventListener('click', gClose);
+
   $('goVR').addEventListener('click', function () {
     try {
       var el = document.documentElement;
@@ -1189,10 +1258,10 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
       setTimeout(function () {
         if (!ok || !st.sensorSeen) {
           note('이 화면에서는 폰 기울기 센서를 쓸 수 없어요. 고개를 돌려도 하늘이 따라오지 않으니, 휴대폰 브라우저(크롬, 사파리)에서 이 페이지 주소를 직접 열어 주세요. 지금은 ‘화면으로 보기’로 둘러볼 수 있어요.');
-          leave();
+          return;
         }
-      }, 1200);
-      enter('vr');
+        note(''); gi = 0; gRender(); $('guide').hidden = false;
+      }, 700);
     });
   });
   $('goScreen').addEventListener('click', function () {
