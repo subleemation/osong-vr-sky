@@ -116,6 +116,11 @@ input[type=range] { width: 100%; accent-color: var(--star); height: 28px; }
 .hframe iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .hview.live .hframe { outline: 3px solid var(--star); outline-offset: 2px; }
 a.hb { text-decoration: none; display: inline-flex; align-items: center; }
+.hprev { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+.hplab { font-family: var(--font-display); font-size: 17px; margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.hplab small { font-family: var(--font-body); font-size: 13px; color: var(--muted); }
+.phone { width: 100%; aspect-ratio: 844 / 390; border-radius: 20px; padding: 9px; background: #1a1f33; box-shadow: inset 0 0 0 2px #2b3352; }
+.phone iframe { width: 100%; height: 100%; border: 0; border-radius: 12px; background: #000; display: block; }
 #login { position: fixed; inset: 0; z-index: 40; background: #070b1c; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .lbox { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 12px; }
 .lbox h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; }
@@ -147,11 +152,21 @@ body { overflow: auto; }
         <h2>내 화면으로 하늘 돌리기</h2>
         <div class="hrow">
           <button class="hb go2" id="hFollow" type="button" aria-pressed="false">참가자 화면 따라오게 하기 · 꺼짐</button>
-          <a class="hb" href="sim.html" target="_blank" rel="noopener">참가자 화면 미리보기 ↗</a>
+          <button class="hb" id="hPrevToggle" type="button" aria-pressed="true" aria-controls="hPrev">참가자 화면 미리보기 · 보이기</button>
         </div>
       </div>
       <div class="hframe"><iframe id="hSky" title="진행자 하늘 화면" allow="fullscreen"></iframe></div>
-      <p class="hn" id="hFollowNote">마우스로 끌어서 돌리고, 휠로 확대해요. ‘따라오게 하기’를 켜면 <b>화면으로 보기</b> 폰은 이 화면과 똑같이 움직이고, <b>VR</b> 폰에는 ‘진행자가 보는 곳’ 화살표가 떠요. VR을 억지로 돌리면 어지러워서 화살표로 안내해요. 아래 ‘모두 같이 볼 곳’을 누르면 이 화면도 그쪽으로 돌아가요.</p>
+      <div id="hPrev" class="hprev">
+        <div>
+          <div class="hplab">VR 헤드셋 속 화면 <small>마우스로 끌면 고개를 돌린 것처럼 움직여요 · 아래로 끌면 설정판</small></div>
+          <div class="phone"><iframe id="pVR" title="VR 화면 미리보기"></iframe></div>
+        </div>
+        <div>
+          <div class="hplab">화면으로 보기 <small>따라오게 하기를 켜면 위 화면과 똑같이 움직여요</small></div>
+          <div class="phone"><iframe id="pSC" title="화면 모드 미리보기"></iframe></div>
+        </div>
+      </div>
+      <p class="hn" id="hFollowNote">마우스로 끌어서 돌리고, 휠로 확대해요. ‘따라오게 하기’를 켜면 <b>화면으로 보기</b> 폰은 이 화면과 똑같이 움직이고, <b>VR</b> 폰에는 ‘진행자가 보는 곳’ 화살표가 떠요. VR을 억지로 돌리면 어지러워서 화살표로 안내해요. 아래 ‘모두 같이 볼 곳’을 누르면 이 화면도 그쪽으로 돌아가요. 미리보기 두 칸은 참가자 폰과 똑같은 화면이고, 접속 수에는 세지 않아요. 노트북이 느려지면 ‘미리보기 · 숨기기’로 꺼 두세요.</p>
     </section>
     <section class="hcard">
       <h2>1. 폰 연결하기</h2>
@@ -2633,7 +2648,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
         try { sessionStorage.removeItem('osong-key'); } catch (x) {}
         my.onclose = null; my.close();
       }
-      else if (m.k === 'state') { ST = m; stAt = Date.now(); follow = !!(m.view && m.view.on); renderFollow(); render(); }
+      else if (m.k === 'state') { ST = m; stAt = Date.now(); if (Date.now() - followAt > 3000) { follow = !!(m.view && m.view.on); renderFollow(); } render(); }
       else if (m.k === 'counts') { counts = m; $('hPeers').textContent = m.phones + '대 접속 (VR 중 ' + m.vr + '대)'; }
     };
     my.onclose = function () { authed = false; setConn('연결이 끊겼어요. 다시 연결 중…', false); setTimeout(connect, retry); retry = Math.min(retry * 2, 8000); };
@@ -2682,7 +2697,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   setInterval(tick, 500);
 
   // ---- host sky view (iframe of the phone page in host mode) ----
-  var view = { yaw: 150, pitch: 30, fov: 75 }, follow = false, lastSend = 0, sendT = null, endT = null;
+  var view = { yaw: 150, pitch: 30, fov: 75 }, follow = false, followAt = 0, lastSend = 0, sendT = null, endT = null;
   (function () {
     var src = new URL('./', location.href).href + '?r=' + room + '&hostview=1';
     if (sv) src += '&server=' + encodeURIComponent(SERVER);
@@ -2708,7 +2723,26 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     $('hFollow').textContent = '참가자 화면 따라오게 하기 · ' + (follow ? '켜짐' : '꺼짐');
     document.querySelector('.hview').classList.toggle('live', follow);
   }
-  $('hFollow').addEventListener('click', function () { follow = !follow; renderFollow(); sendView(true); });
+  $('hFollow').addEventListener('click', function () { follow = !follow; followAt = Date.now(); renderFollow(); sendView(true); });
+
+  // ---- participant previews (same page as phones, mouse stands in for the head) ----
+  var prevOn = true;
+  try { prevOn = localStorage.getItem('osong-prev') !== 'off'; } catch (e) {}
+  function prevSrc(mode) {
+    var u = new URL('./', location.href).href + '?sim=' + mode + '&r=' + room;
+    if (sv) u += '&server=' + encodeURIComponent(SERVER);
+    return u;
+  }
+  function renderPrev() {
+    $('hPrev').hidden = !prevOn;
+    $('hPrevToggle').setAttribute('aria-pressed', prevOn ? 'true' : 'false');
+    $('hPrevToggle').textContent = '참가자 화면 미리보기 · ' + (prevOn ? '숨기기' : '보이기');
+    // unloading the frames when hidden keeps the laptop from drawing three skies at once
+    $('pVR').src = prevOn ? prevSrc('vr') : 'about:blank';
+    $('pSC').src = prevOn ? prevSrc('screen') : 'about:blank';
+  }
+  $('hPrevToggle').addEventListener('click', function () { prevOn = !prevOn; try { localStorage.setItem('osong-prev', prevOn ? 'on' : 'off'); } catch (e) {} renderPrev(); });
+  renderPrev();
 
   // ---- QR / link ----
   function roomLink() { return new URL('./', location.href).href + '?r=' + room; }
