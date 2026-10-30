@@ -176,6 +176,7 @@ input[type=range]:disabled { opacity: 0.45; }
         </div>
       </div>
       <div class="chips" role="group" aria-label="표시할 것">
+        <button class="chip" type="button" data-opt="art" aria-pressed="true">별자리 그림</button>
         <button class="chip" type="button" data-opt="lines" aria-pressed="true">별자리 선</button>
         <button class="chip" type="button" data-opt="names" aria-pressed="true">별자리 이름</button>
         <button class="chip" type="button" data-opt="stars" aria-pressed="true">별 이름</button>
@@ -220,7 +221,7 @@ input[type=range]:disabled { opacity: 0.45; }
       <p class="sub" style="font-size:14px">어지러우면 바로 벗고 쉬어요. 어린이는 3분 정도만 보는 게 좋아요.</p>
     </section>
 
-    <p class="foot">위치 북위 36.64° 동경 127.33° · 별 5,000여 개와 88개 별자리, 행성 위치를 계산해 그렸어요.<br>달은 이날 밤 11시 18분에 떠서 관측 시간에는 보이지 않아요.</p>
+    <p class="foot">위치 북위 36.64° 동경 127.33° · 별 5,000여 개와 88개 별자리, 행성 위치를 계산해 그렸어요.<br>별자리 그림: Stellarium 팀 (Free Art License)<br>달은 이날 밤 11시 18분에 떠서 관측 시간에는 보이지 않아요.</p>
   </div>
 </div>
 
@@ -432,7 +433,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   // ---------- state ----------
   var st = {
     minutes: 90, speed: 0, lim: 4.6,
-    show: { lines: true, names: true, stars: true, mw: true, dirs: true },
+    show: { lines: true, names: true, stars: true, mw: true, dirs: true, art: true },
     ipdAdj: 0, warp: 0.3, fov: 95,
     mode: 'menu', // menu | vr | screen
     yaw: 150, pitch: 30, zoomFov: 75,
@@ -639,6 +640,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     }
     // constellation lines
     var sel = view.sel, selCons = (sel && sel.cons) || guideCons();
+    drawArt(view, selCons);
     if (st.show.lines) {
       c.lineWidth = Math.max(1, view.f / 420);
       c.strokeStyle = 'rgba(140,170,255,0.38)';
@@ -995,7 +997,8 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     { id: 'fov-', x: -0.26, y: -0.09, w: 0.17, h: 0.15, label: '−', rep: true },
     { id: 'fov+', x: 0.26, y: -0.09, w: 0.17, h: 0.15, label: '+', rep: true },
     { id: 'south', x: -0.5, y: -0.31, w: 0.62, h: 0.16, label: '이 방향이 남쪽' },
-    { id: 'menu', x: 0.18, y: -0.31, w: 0.3, h: 0.16, label: '메뉴로' }
+    { id: 'menu', x: 0.18, y: -0.31, w: 0.3, h: 0.16, label: '메뉴로' },
+    { id: 'art', x: 0.56, y: -0.31, w: 0.34, h: 0.16, label: '그림 끄기' }
   ];
   var ROWS = [
     { y: 0.31, name: '두 화면 간격', val: function () { return st.ipdAdj === 0 ? '기본' : (st.ipdAdj > 0 ? '+' : '') + st.ipdAdj; } },
@@ -1035,6 +1038,12 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
       saveSettings();
       return;
     } else if (id === 'menu') { leave(); return; }
+    else if (id === 'art') {
+      if (NET.room && SYNC.has && SYNC.art != null) { PANEL.toast = '지금은 진행자가 정해요'; PANEL.toastT = 1.6; return; }
+      st.show.art = !st.show.art; artSlow = false; syncArtUi();
+      PANEL.toast = st.show.art ? '별자리 그림을 켰어요' : '별자리 그림을 껐어요'; PANEL.toastT = 1.6;
+      return;
+    }
     else changed = false;
     if (changed) {
       $('ipd').value = st.ipdAdj; $('warp').value = st.warp; $('fov').value = st.fov;
@@ -1110,6 +1119,109 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     }
   }
 
+  // ---------- constellation art (Stellarium "modern" illustrations, Free Art License; loaded from art.js) ----------
+  var ART = [], artReady = false;
+  function inv3(m) {
+    var a = m[0][0], b = m[0][1], c = m[0][2], d = m[1][0], e = m[1][1], f = m[1][2], g = m[2][0], h = m[2][1], i = m[2][2];
+    var A = e * i - f * h, B = -(d * i - f * g), Cc = d * h - e * g, det = a * A + b * B + c * Cc;
+    if (Math.abs(det) < 1e-12) return null;
+    return [[A / det, -(b * i - c * h) / det, (b * f - c * e) / det],
+            [B / det, (a * i - c * g) / det, -(a * f - c * d) / det],
+            [Cc / det, -(a * h - b * g) / det, (a * e - b * d) / det]];
+  }
+  function initArt() {
+    if (artReady || !window.SKY_ART) return;
+    artReady = true;
+    window.SKY_ART.forEach(function (d) {
+      // linear map image (u, v, 1) -> J2000 direction, fixed by the three anchor stars
+      var U = [[d.a[0][0], d.a[1][0], d.a[2][0]], [d.a[0][1], d.a[1][1], d.a[2][1]], [1, 1, 1]];
+      var Ui = inv3(U); if (!Ui) return;
+      var vs = d.a.map(function (p) { return C.radec2vec(p[2], p[3]); });
+      var Mx = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+      for (var r = 0; r < 3; r++) for (var k = 0; k < 3; k++) Mx[r][k] = vs[0][r] * Ui[0][k] + vs[1][r] * Ui[1][k] + vs[2][r] * Ui[2][k];
+      function dir(u, v) { var x = Mx[0][0] * u + Mx[0][1] * v + Mx[0][2], y = Mx[1][0] * u + Mx[1][1] * v + Mx[1][2], z = Mx[2][0] * u + Mx[2][1] * v + Mx[2][2], n = Math.hypot(x, y, z); return [x / n, y / n, z / n]; }
+      var G = 2, uv = [], vecs = [];
+      for (var j = 0; j <= G; j++) for (var i2 = 0; i2 <= G; i2++) { var u = d.w * i2 / G, v = d.h * j / G; uv.push([u, v]); vecs.push(dir(u, v)); }
+      var cen = dir(d.w / 2, d.h / 2), rad = 0;
+      vecs.forEach(function (q) { rad = Math.max(rad, Math.acos(Math.max(-1, Math.min(1, q[0] * cen[0] + q[1] * cen[1] + q[2] * cen[2])))); });
+      var img = new Image(), item = { id: d.id, w: d.w, h: d.h, img: img, ok: false, uv: uv, vecs: vecs, cen: cen, rad: rad, G: G };
+      img.onload = function () { item.ok = true; };
+      img.src = d.src;
+      ART.push(item);
+    });
+  }
+  var artEma = 0, artSlowT = 0, artSlow = false;
+  function artPerf(dt) {
+    // safety net for slow phones: if frames get slow with the art on, switch it off on this phone only
+    if (!artReady || artSlow || st.mode === 'menu' || !artOn()) { artSlowT = 0; artEma = 0; return; }
+    artEma = artEma ? artEma * 0.9 + dt * 0.1 : dt;
+    if (artEma > 0.045) {
+      artSlowT += dt;
+      if (artSlowT > 4) { artSlow = true; st.show.art = false; syncArtUi(); PANEL.toast = '폰이 느려서 별자리 그림을 껐어요'; PANEL.toastT = 2.5; }
+    } else artSlowT = 0;
+  }
+  function artOn() {
+    if (artSlow) return false;
+    if (NET.room && SYNC.has && SYNC.art != null) return SYNC.art;
+    return st.show.art;
+  }
+  var ACAM = [0, 0, 0], APTS = [];
+  for (var api = 0; api < 9; api++) APTS.push([0, 0, 0]);
+  function artTri(c, img, p0, p1, p2, t0, t1, t2) {
+    // affine texture map of one triangle: image (u, v) -> screen (x, y)
+    var u0 = t0[0], v0 = t0[1], u1 = t1[0], v1 = t1[1], u2 = t2[0], v2 = t2[1];
+    var den = u0 * (v1 - v2) + u1 * (v2 - v0) + u2 * (v0 - v1);
+    if (Math.abs(den) < 1e-9) return;
+    var x0 = p0[0], y0 = p0[1], x1 = p1[0], y1 = p1[1], x2 = p2[0], y2 = p2[1];
+    var a = (x0 * (v1 - v2) + x1 * (v2 - v0) + x2 * (v0 - v1)) / den;
+    var b = (y0 * (v1 - v2) + y1 * (v2 - v0) + y2 * (v0 - v1)) / den;
+    var cc = (x0 * (u2 - u1) + x1 * (u0 - u2) + x2 * (u1 - u0)) / den;
+    var dd = (y0 * (u2 - u1) + y1 * (u0 - u2) + y2 * (u1 - u0)) / den;
+    var e = (x0 * (u1 * v2 - u2 * v1) + x1 * (u2 * v0 - u0 * v2) + x2 * (u0 * v1 - u1 * v0)) / den;
+    var f = (y0 * (u1 * v2 - u2 * v1) + y1 * (u2 * v0 - u0 * v2) + y2 * (u0 * v1 - u1 * v0)) / den;
+    var mx = (x0 + x1 + x2) / 3, my = (y0 + y1 + y2) / 3, g = 0.6;
+    function ex(x, m) { var dx = x - m; return x + (dx > 0 ? g : -g); }
+    c.save();
+    c.beginPath(); c.moveTo(ex(x0, mx), ex(y0, my)); c.lineTo(ex(x1, mx), ex(y1, my)); c.lineTo(ex(x2, mx), ex(y2, my)); c.closePath(); c.clip();
+    c.transform(a, b, cc, dd, e, f);
+    c.drawImage(img, 0, 0);
+    c.restore();
+  }
+  function drawArt(view, selCons) {
+    if (!artReady || !artOn()) return;
+    var c = ctx, fovNow = view.vr ? st.fov : (st.mode === 'menu' ? 80 : st.zoomFov);
+    var half = fovNow * 0.5 * D2R * (view.vr ? 1.15 : Math.hypot(W, H) / Math.max(W, H));
+    var base = 0.16 + 0.12 * frame.dark;
+    for (var i = 0; i < ART.length; i++) {
+      var it = ART[i]; if (!it.ok) continue;
+      if (altOf(it.cen) < -Math.sin(it.rad)) continue;              // whole figure below the horizon
+      toCam(it.cen, ACAM);
+      if (Math.acos(Math.max(-1, Math.min(1, ACAM[2]))) - it.rad > half) continue;
+      var ok = true; it.partial = true;
+      for (var k = 0; k < it.vecs.length; k++) {
+        toCam(it.vecs[k], CV);
+        if (CV[2] < 0.12 || !proj(view, CV[0], CV[1], CV[2], P)) { APTS[k][2] = 0; ok = false; continue; }
+        APTS[k][0] = P[0]; APTS[k][1] = P[1]; APTS[k][2] = 1;
+      }
+      if (!ok && !it.partial) continue;
+      // one least-squares affine fit over the 3x3 grid of projected points: a single drawImage per figure, no clipping
+      var su = 0, sv = 0, suu = 0, svv = 0, suv = 0, sx = 0, sy = 0, sux = 0, svx = 0, suy = 0, svy = 0, m = 0;
+      for (var k2 = 0; k2 < it.vecs.length; k2++) {
+        if (!APTS[k2][2]) continue;
+        var uu = it.uv[k2][0], vv = it.uv[k2][1], xx = APTS[k2][0], yy = APTS[k2][1];
+        su += uu; sv += vv; suu += uu * uu; svv += vv * vv; suv += uu * vv; sx += xx; sy += yy;
+        sux += uu * xx; svx += vv * xx; suy += uu * yy; svy += vv * yy; m++;
+      }
+      if (m < 5) continue;
+      var N = [[suu, suv, su], [suv, svv, sv], [su, sv, m]], Ni = inv3(N); if (!Ni) continue;
+      var ax = Ni[0][0] * sux + Ni[0][1] * svx + Ni[0][2] * sx, cx2 = Ni[1][0] * sux + Ni[1][1] * svx + Ni[1][2] * sx, ex2 = Ni[2][0] * sux + Ni[2][1] * svx + Ni[2][2] * sx;
+      var by = Ni[0][0] * suy + Ni[0][1] * svy + Ni[0][2] * sy, dy2 = Ni[1][0] * suy + Ni[1][1] * svy + Ni[1][2] * sy, fy2 = Ni[2][0] * suy + Ni[2][1] * svy + Ni[2][2] * sy;
+      c.globalAlpha = selCons === it.id ? Math.min(0.75, base * 2.6) : base;
+      c.save(); c.transform(ax, by, cx2, dy2, ex2, fy2); c.drawImage(it.img, 0, 0); c.restore();
+    }
+    c.globalAlpha = 1;
+  }
+
   // ---------- live link to the sync server (Cloudflare Worker), spots ----------
   var SERVER = 'wss://osong-vr-sync.lrwe36.workers.dev';
   var NET = { room: null, status: 'off', hostOpen: false, ws: null, gotState: false };
@@ -1162,6 +1274,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   function applyState(s) {
     if (s && s.k === 'view') { SYNC.view = { on: !!s.on, yaw: +s.yaw || 0, pitch: +s.pitch || 0, fov: +s.fov || 75 }; return; }
     if (!s || s.k !== 'state') return;
+    SYNC.art = typeof s.art === 'boolean' ? s.art : null;
     SYNC.view = s.view ? { on: !!s.view.on, yaw: +s.view.yaw || 0, pitch: +s.view.pitch || 0, fov: +s.view.fov || 75 } : null;
     NET.gotState = true;
     SYNC.has = true; SYNC.phase = s.phase || 'idle';
@@ -1308,6 +1421,8 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   var last = performance.now(), lastInfoKey = '';
   function loop(now) {
     var dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!artReady && window.SKY_ART) initArt();
+    artPerf(dt);
     var synced = netTick();
     if (!synced && st.speed > 0 && st.mode !== 'menu') {
       st.minutes += dt * st.speed / 60;
@@ -1377,6 +1492,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     ch.addEventListener('click', function () {
       var k = ch.getAttribute('data-opt'); st.show[k] = !st.show[k];
       ch.setAttribute('aria-pressed', st.show[k] ? 'true' : 'false');
+      if (k === 'art') { artSlow = false; syncArtUi(); }
     });
   });
   function syncVrLabels() {
@@ -1403,6 +1519,10 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
       }, 300);
     });
   });
+  function syncArtUi() {
+    for (var i = 0; i < BTNS.length; i++) if (BTNS[i].id === 'art') BTNS[i].label = st.show.art ? '그림 끄기' : '그림 켜기';
+    var ch = document.querySelector('[data-opt="art"]'); if (ch) ch.setAttribute('aria-pressed', st.show.art ? 'true' : 'false');
+  }
   function note(t) { var n = $('sensorNote'); n.textContent = t; n.hidden = !t; }
 
   function enter(mode) {
@@ -1558,5 +1678,6 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
 })();
 </script>
 
+<script src="art.js" async></script>
 </body>
 </html>

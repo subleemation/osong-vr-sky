@@ -152,6 +152,7 @@ body { overflow: auto; }
         <h2>내 화면으로 하늘 돌리기</h2>
         <div class="hrow">
           <button class="hb go2" id="hFollow" type="button" aria-pressed="false">참가자 화면 따라오게 하기 · 꺼짐</button>
+          <button class="hb" id="hArt" type="button" aria-pressed="true">별자리 그림 · 켜짐</button>
           <button class="hb" id="hPrevToggle" type="button" aria-pressed="true" aria-controls="hPrev">참가자 화면 미리보기 · 보이기</button>
         </div>
       </div>
@@ -2674,6 +2675,9 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     $('hPhaseG').setAttribute('aria-pressed', ST.phase === 'guide' ? 'true' : 'false');
     $('hPhaseF').setAttribute('aria-pressed', ST.phase === 'free' ? 'true' : 'false');
     $('hPhaseG').disabled = $('hPhaseF').disabled = run;
+    var artOn = ST.art !== false;
+    $('hArt').setAttribute('aria-pressed', artOn ? 'true' : 'false');
+    $('hArt').textContent = '별자리 그림 · ' + (artOn ? '켜짐' : '꺼짐');
     if (document.activeElement !== $('hNote') && $('hNote').value !== ST.note && ST.note) $('hNote').value = ST.note;
     tick();
   }
@@ -2769,6 +2773,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     });
     box.appendChild(b);
   });
+  $('hArt').addEventListener('click', function () { cmd('art', { v: !(ST && ST.art !== false) ? true : false }); });
   $('hSpotOff').addEventListener('click', function () { cmd('spot', { v: null }); });
   $('hOrderGF').addEventListener('click', function () { order = 'GF'; render(); });
   $('hOrderFG').addEventListener('click', function () { order = 'FG'; render(); });

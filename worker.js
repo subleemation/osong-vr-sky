@@ -45,6 +45,7 @@ export class Room {
       timer: tm ? { rem: tm.paused ? tm.rem : Math.max(0, tm.end - Date.now()), total: tm.total, label: tm.label, paused: !!tm.paused } : null,
       plan: s.plan ? { order: s.plan.order, i: s.plan.i, n: s.plan.steps.length, label: s.plan.steps[s.plan.i].l } : null,
       view: this.view || s.view || null,
+      art: typeof s.art === 'boolean' ? s.art : null,
     };
     return JSON.stringify(out);
   }
@@ -147,7 +148,7 @@ export class Room {
         s.plan = { order: m.order === 'FG' ? 'FG' : 'GF', steps, i: 0 }; this.planEnter(s, 0); break;
       }
       case 'next': this.planNext(s); break;
-      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; break;
+      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; break;
       case 'pause': if (s.timer) { if (s.timer.paused) { s.timer.paused = false; s.timer.end = now + s.timer.rem; } else { s.timer.rem = Math.max(0, s.timer.end - now); s.timer.paused = true; } } break;
       case 'phase': if (!s.plan && (m.v === 'guide' || m.v === 'free')) { s.phase = m.v; if (m.v === 'free') s.spot = null; } break;
       case 'spot': s.spot = typeof m.v === 'string' ? m.v.slice(0, 12) : null; if (s.spot && !s.plan && s.phase !== 'guide') s.phase = 'guide'; break;
@@ -156,6 +157,7 @@ export class Room {
       case 'timer': if (!s.plan) { this.setTimer(s, this.clip(m.min, 0, 180, 0) * 60000, String(m.label || '').slice(0, 12), 'manual'); if (s.timer && s.phase === 'idle') s.phase = 'free'; } break;
       case 'note': s.note = String(m.v || '').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'hold': s.hold = !!m.v; if (s.hold) s.note = String(m.note || '헤드셋을 벗고 앞을 봐 주세요').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
+      case 'art': s.art = typeof m.v === 'boolean' ? m.v : null; break;
       case 'reset': Object.assign(s, FRESH()); this.view = null; break;
     }
   }
