@@ -44,6 +44,7 @@ export class Room {
       k: 'state', phase: s.phase, time: this.minutes(s), speed: s.speed, spot: s.spot, note: s.note, hold: s.hold,
       timer: tm ? { rem: tm.paused ? tm.rem : Math.max(0, tm.end - Date.now()), total: tm.total, label: tm.label, paused: !!tm.paused } : null,
       plan: s.plan ? { order: s.plan.order, i: s.plan.i, n: s.plan.steps.length, label: s.plan.steps[s.plan.i].l } : null,
+      view: this.view || s.view || null,
     };
     return JSON.stringify(out);
   }
@@ -56,6 +57,7 @@ export class Room {
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() || {};
       if (a.role === 'admin') admins++;
+      else if (a.mode === 'host' || a.mode === 'sim') continue; // host's own sky view and preview pages are not participants
       else { phones++; if (a.mode === 'vr') vr++; }
     }
     return { k: 'counts', phones, vr, admins };
@@ -84,7 +86,7 @@ export class Room {
     if (!m || typeof m.k !== 'string') return;
     const att = ws.deserializeAttachment() || { role: 'phone', mode: 'menu' };
     if (m.k === 'hi') {
-      att.mode = m.m === 'vr' ? 'vr' : m.m === 'screen' ? 'screen' : 'menu';
+      att.mode = ['vr', 'screen', 'host', 'sim'].includes(m.m) ? m.m : 'menu';
       ws.serializeAttachment(att); this.pushCounts(); return;
     }
     if (m.k === 'auth') {
@@ -99,6 +101,20 @@ export class Room {
       return;
     }
     if (m.k !== 'cmd' || att.role !== 'admin') return;
+    if (m.c === 'view') {
+      // live camera from the host's mouse: relay right away, write to storage only when asked (toggle / end of a drag)
+      const v = { on: !!m.on, yaw: ((this.clip(m.yaw, -720, 720, 0) % 360) + 360) % 360, pitch: this.clip(m.pitch, -30, 90, 30), fov: this.clip(m.fov, 20, 120, 75) };
+      this.view = v;
+      const msg = JSON.stringify(Object.assign({ k: 'view' }, v));
+      for (const w of this.ctx.getWebSockets()) { try { w.send(msg); } catch (e) {} }
+      if (m.persist) {
+        const s = await this.load();
+        s.view = v;
+        if (v.on && s.phase === 'idle') s.phase = 'guide';
+        await this.save(s); this.broadcast(s);
+      }
+      return;
+    }
     const s = await this.load();
     await this.apply(s, m);
     await this.save(s);
@@ -131,7 +147,7 @@ export class Room {
         s.plan = { order: m.order === 'FG' ? 'FG' : 'GF', steps, i: 0 }; this.planEnter(s, 0); break;
       }
       case 'next': this.planNext(s); break;
-      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; break;
+      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; break;
       case 'pause': if (s.timer) { if (s.timer.paused) { s.timer.paused = false; s.timer.end = now + s.timer.rem; } else { s.timer.rem = Math.max(0, s.timer.end - now); s.timer.paused = true; } } break;
       case 'phase': if (!s.plan && (m.v === 'guide' || m.v === 'free')) { s.phase = m.v; if (m.v === 'free') s.spot = null; } break;
       case 'spot': s.spot = typeof m.v === 'string' ? m.v.slice(0, 12) : null; if (s.spot && !s.plan && s.phase !== 'guide') s.phase = 'guide'; break;
@@ -140,7 +156,7 @@ export class Room {
       case 'timer': if (!s.plan) { this.setTimer(s, this.clip(m.min, 0, 180, 0) * 60000, String(m.label || '').slice(0, 12), 'manual'); if (s.timer && s.phase === 'idle') s.phase = 'free'; } break;
       case 'note': s.note = String(m.v || '').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'hold': s.hold = !!m.v; if (s.hold) s.note = String(m.note || '헤드셋을 벗고 앞을 봐 주세요').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
-      case 'reset': Object.assign(s, FRESH()); break;
+      case 'reset': Object.assign(s, FRESH()); this.view = null; break;
     }
   }
 

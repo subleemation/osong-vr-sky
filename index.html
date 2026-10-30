@@ -1113,13 +1113,16 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   // ---------- live link to the sync server (Cloudflare Worker), spots ----------
   var SERVER = 'wss://osong-vr-sync.lrwe36.workers.dev';
   var NET = { room: null, status: 'off', hostOpen: false, ws: null, gotState: false };
-  var SYNC = { has: false, phase: 'idle', base: 90, speed: 0, at: 0, spot: null, note: '', hold: false, timer: null, plan: null };
+  var SYNC = { has: false, phase: 'idle', base: 90, speed: 0, at: 0, spot: null, note: '', hold: false, timer: null, plan: null, view: null };
   (function () {
     var q = new URLSearchParams(location.search), r = (q.get('r') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 24);
     var sv = q.get('server');
     if (sv && /^ws:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(sv)) SERVER = sv;
     NET.room = r.length >= 4 ? r : null;
+    NET.hostview = q.get('hostview') === '1';
+    NET.sim = q.get('sim') === 'vr' ? 'vr' : q.get('sim') === 'screen' ? 'screen' : null;
   })();
+  function followOn() { return !NET.hostview && syncActive() && !SYNC.hold && SYNC.view && SYNC.view.on; }
 
   function phaseName(p) { return p === 'guide' ? '안내 시간' : p === 'free' ? '자유 관찰' : p === 'break' ? '쉬는 시간' : p === 'end' ? '끝' : ''; }
   function fmtTime(ms) { var s = Math.max(0, Math.ceil(ms / 1000)), m = Math.floor(s / 60), x = s % 60; return m + ':' + (x < 10 ? '0' : '') + x; }
@@ -1157,7 +1160,9 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
 
   // ---------- phone side ----------
   function applyState(s) {
+    if (s && s.k === 'view') { SYNC.view = { on: !!s.on, yaw: +s.yaw || 0, pitch: +s.pitch || 0, fov: +s.fov || 75 }; return; }
     if (!s || s.k !== 'state') return;
+    SYNC.view = s.view ? { on: !!s.view.on, yaw: +s.view.yaw || 0, pitch: +s.view.pitch || 0, fov: +s.view.fov || 75 } : null;
     NET.gotState = true;
     SYNC.has = true; SYNC.phase = s.phase || 'idle';
     SYNC.base = s.time; SYNC.speed = s.speed || 0; SYNC.at = Date.now();
@@ -1182,7 +1187,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     if (NET.status !== 'ok' && !SYNC.has) t = '진행자와 연결하는 중…';
     else if (!SYNC.has) t = '진행자를 기다리는 중이에요';
     else if (SYNC.phase === 'idle' || SYNC.phase === 'end') t = SYNC.phase === 'end' ? '프로그램이 끝났어요. 자유롭게 봐요' : '진행자와 연결됐어요. 시작 신호를 기다려요';
-    else t = '진행자와 함께 보는 중 · ' + phaseName(SYNC.phase) + (SYNC.timer ? ' · ' + fmtTime(timerRemaining(SYNC.timer)) : '');
+    else t = '진행자와 함께 보는 중 · ' + phaseName(SYNC.phase) + (SYNC.timer ? ' · ' + fmtTime(timerRemaining(SYNC.timer)) : '') + (followOn() ? ' · 진행자 화면을 따라가요' : '');
     if (NET.status === 'lost') t += ' (연결이 끊겨도 계속 볼 수 있어요)';
     chip.textContent = t;
     $('time').disabled = syncActive();
@@ -1221,6 +1226,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     // top info: phase + timer
     var topY = vr ? cy - rad * 0.82 : 84;
     var parts = [phaseName(SYNC.phase)];
+    if (followOn() && !vr) parts.push('진행자 화면을 따라가는 중');
     var tm = SYNC.timer, low = false;
     if (tm) { var rem = timerRemaining(tm); parts.push((tm.label ? tm.label + ' ' : '') + fmtTime(rem) + (tm.paused ? ' (멈춤)' : '')); low = !tm.paused && rem < 30000; }
     var txt = parts.join(' · ');
@@ -1236,13 +1242,19 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
       c.fillStyle = '#2a1d00'; c.fillText(SYNC.note, vr ? cx : W / 2, ny, nw);
     }
     // target cue
-    var sp = SYNC.phase === 'guide' ? SYNC.spot : null;
-    if (!sp) return;
-    var v = spotVec(sp, st.minutes), e = C.apply(frame.M, v), cam = st.cam;
-    var label = sp.name;
-    if (e[2] < 0.0) {
+    var sp = SYNC.phase === 'guide' ? SYNC.spot : null, e, label, cam = st.cam;
+    if (followOn() && vr) {
+      // VR phones are never turned by force (it makes people dizzy); point at where the host is looking instead
+      var vaz = SYNC.view.yaw * D2R, val = SYNC.view.pitch * D2R;
+      e = [Math.sin(vaz) * Math.cos(val), Math.cos(vaz) * Math.cos(val), Math.sin(val)];
+      label = '진행자가 보는 곳';
+    } else {
+      if (!sp) return;
+      e = C.apply(frame.M, spotVec(sp, st.minutes)); label = sp.name;
+    }
+    if (e[2] < -0.05) {
       c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.fillStyle = 'rgba(255,215,122,0.9)'; c.textAlign = 'center';
-      c.fillText(sp.name + '은(는) 지금 지평선 아래예요', vr ? cx : W / 2, vr ? cy + rad * 0.5 : H - 40);
+      c.fillText(label + '은(는) 지금 지평선 아래예요', vr ? cx : W / 2, vr ? cy + rad * 0.5 : H - 40);
       return;
     }
     var dx = e[0] * cam.r[0] + e[1] * cam.r[1] + e[2] * cam.r[2], dy = e[0] * cam.u[0] + e[1] * cam.u[1] + e[2] * cam.u[2], dz = e[0] * cam.f[0] + e[1] * cam.f[1] + e[2] * cam.f[2];
@@ -1271,7 +1283,8 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   }
 
   var wsRetry = 1000, lastSentMode = null;
-  function sendHi() { if (NET.ws && NET.ws.readyState === 1) { try { NET.ws.send(JSON.stringify({ k: 'hi', m: st.mode })); lastSentMode = st.mode; } catch (e) {} } }
+  function hiMode() { return NET.hostview ? 'host' : NET.sim ? 'sim' : st.mode; }
+  function sendHi() { if (NET.ws && NET.ws.readyState === 1) { try { NET.ws.send(JSON.stringify({ k: 'hi', m: hiMode() })); lastSentMode = st.mode; } catch (e) {} } }
   function connect() {
     var ws;
     try { ws = new WebSocket(SERVER + '/ws?room=' + NET.room); } catch (e) { NET.status = 'lost'; renderNetChip(); setTimeout(connect, 5000); return; }
@@ -1301,8 +1314,10 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
       if (st.minutes > 180) st.minutes = 30;
       syncTime();
     }
+    if (followOn() && st.mode === 'screen') { st.yaw = SYNC.view.yaw; st.pitch = SYNC.view.pitch; st.zoomFov = SYNC.view.fov; }
     var target;
-    if ((st.mode === 'vr' || (st.mode === 'screen' && st.useSensor)) && rawCam) target = rawCam;
+    if (NET.sim === 'vr' && st.mode === 'vr') target = cameraFromYawPitch();
+    else if ((st.mode === 'vr' || (st.mode === 'screen' && st.useSensor)) && rawCam) target = rawCam;
     else {
       if (st.mode === 'menu') st.yaw = (st.yaw + dt * 1.2) % 360;
       target = cameraFromYawPitch();
@@ -1464,7 +1479,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   // double tap anywhere in VR -> menu
   var lastTap = 0;
   canvas.addEventListener('pointerup', function () {
-    if (st.mode !== 'vr') return;
+    if (st.mode !== 'vr' || NET.sim) return;
     var t = performance.now();
     if (t - lastTap < 380) leave();
     lastTap = t;
@@ -1473,20 +1488,21 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
 
   // drag & pinch in screen mode
   var pointers = {}, pinch0 = 0, fov0 = 75;
+  function canDrag() { return (st.mode === 'screen' && !followOn()) || (NET.sim === 'vr' && st.mode === 'vr'); }
   canvas.addEventListener('pointerdown', function (e) {
-    if (st.mode !== 'screen') return;
+    if (!canDrag()) return;
     canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     var ids = Object.keys(pointers);
     if (ids.length === 2) { var a = pointers[ids[0]], b = pointers[ids[1]]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); fov0 = st.zoomFov; }
   });
   canvas.addEventListener('pointermove', function (e) {
-    if (st.mode !== 'screen' || !pointers[e.pointerId]) return;
+    if (!canDrag() || !pointers[e.pointerId]) return;
     var p = pointers[e.pointerId], ids = Object.keys(pointers);
     if (ids.length === 1) {
-      var degPerPx = st.zoomFov / Math.max(W, H);
+      var degPerPx = (st.mode === 'vr' ? st.fov * 0.9 : st.zoomFov) / Math.max(W, H);
       st.yaw = (st.yaw - (e.clientX - p.x) * degPerPx + 360) % 360;
-      st.pitch = Math.max(-10, Math.min(89, st.pitch + (e.clientY - p.y) * degPerPx));
+      st.pitch = Math.max(st.mode === 'vr' ? -80 : -10, Math.min(89, st.pitch + (e.clientY - p.y) * degPerPx));
     }
     p.x = e.clientX; p.y = e.clientY;
     if (ids.length === 2) {
@@ -1497,7 +1513,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   function up(e) { delete pointers[e.pointerId]; if (Object.keys(pointers).length < 2) pinch0 = 0; }
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   canvas.addEventListener('wheel', function (e) {
-    if (st.mode !== 'screen') return;
+    if (st.mode !== 'screen' || !canDrag()) return;
     e.preventDefault();
     st.zoomFov = Math.max(25, Math.min(110, st.zoomFov * (e.deltaY > 0 ? 1.08 : 0.93)));
   }, { passive: false });
@@ -1514,6 +1530,28 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   computeFrame(); syncTime();
   if (document.fonts && document.fonts.load) {
     document.fonts.load('16px "Jua"'); document.fonts.load('16px "Gowun Dodum"');
+  }
+  if (NET.hostview || NET.sim) {
+    try { $('backBtn').hidden = true; } catch (e) {}
+    if (NET.hostview || NET.sim === 'screen') { st.useSensor = false; enter('screen'); if (NET.hostview) $('hint').textContent = '끌어서 돌리기 · 휠로 확대'; }
+    else { st.yaw = 150; st.pitch = 30; enter('vr'); }
+  }
+  if (NET.hostview && window.parent !== window) {
+    var lastPost = '';
+    setInterval(function () {
+      if (st.mode !== 'screen') return;
+      var key = Math.round(st.yaw * 10) + ',' + Math.round(st.pitch * 10) + ',' + Math.round(st.zoomFov);
+      if (key === lastPost) return; lastPost = key;
+      try { window.parent.postMessage({ type: 'osong-view', yaw: st.yaw, pitch: st.pitch, fov: st.zoomFov }, location.origin === 'null' ? '*' : location.origin); } catch (e) {}
+    }, 120);
+    window.addEventListener('message', function (ev) {
+      var d = ev.data || {};
+      if (d.type === 'osong-lookat') {
+        var sp = spotById(d.id); if (!sp) return;
+        var aa = spotAltAz(sp, st.minutes);
+        st.yaw = aa.az; st.pitch = Math.max(-5, Math.min(85, aa.alt));
+      }
+    });
   }
   requestAnimationFrame(loop);
   window.__sky = { st: st, frame: function () { return frame; } };

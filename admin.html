@@ -112,6 +112,10 @@ input[type=range] { width: 100%; accent-color: var(--star); height: 28px; }
 .off { opacity: 0.45; pointer-events: none; }
 .hclock { font-family: var(--font-display); font-size: 30px; font-variant-numeric: tabular-nums; }
 
+.hframe { position: relative; width: 100%; aspect-ratio: 16 / 8; max-height: 62vh; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #000; }
+.hframe iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.hview.live .hframe { outline: 3px solid var(--star); outline-offset: 2px; }
+a.hb { text-decoration: none; display: inline-flex; align-items: center; }
 #login { position: fixed; inset: 0; z-index: 40; background: #070b1c; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .lbox { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 12px; }
 .lbox h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; }
@@ -138,6 +142,17 @@ body { overflow: auto; }
   </div>
   <div class="hbig" id="hBig" aria-live="polite">대기 중</div>
   <div class="hgrid">
+    <section class="hcard hview" style="grid-column: 1 / -1">
+      <div class="hrow" style="justify-content:space-between">
+        <h2>내 화면으로 하늘 돌리기</h2>
+        <div class="hrow">
+          <button class="hb go2" id="hFollow" type="button" aria-pressed="false">참가자 화면 따라오게 하기 · 꺼짐</button>
+          <a class="hb" href="sim.html" target="_blank" rel="noopener">참가자 화면 미리보기 ↗</a>
+        </div>
+      </div>
+      <div class="hframe"><iframe id="hSky" title="진행자 하늘 화면" allow="fullscreen"></iframe></div>
+      <p class="hn" id="hFollowNote">마우스로 끌어서 돌리고, 휠로 확대해요. ‘따라오게 하기’를 켜면 <b>화면으로 보기</b> 폰은 이 화면과 똑같이 움직이고, <b>VR</b> 폰에는 ‘진행자가 보는 곳’ 화살표가 떠요. VR을 억지로 돌리면 어지러워서 화살표로 안내해요. 아래 ‘모두 같이 볼 곳’을 누르면 이 화면도 그쪽으로 돌아가요.</p>
+    </section>
     <section class="hcard">
       <h2>1. 폰 연결하기</h2>
       <p class="hn">폰에서 이 QR을 찍거나 링크를 열면 이 화면과 연결돼요. 연결된 폰은 VR을 시작하면 자동으로 따라와요.</p>
@@ -2618,7 +2633,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
         try { sessionStorage.removeItem('osong-key'); } catch (x) {}
         my.onclose = null; my.close();
       }
-      else if (m.k === 'state') { ST = m; stAt = Date.now(); render(); }
+      else if (m.k === 'state') { ST = m; stAt = Date.now(); follow = !!(m.view && m.view.on); renderFollow(); render(); }
       else if (m.k === 'counts') { counts = m; $('hPeers').textContent = m.phones + '대 접속 (VR 중 ' + m.vr + '대)'; }
     };
     my.onclose = function () { authed = false; setConn('연결이 끊겼어요. 다시 연결 중…', false); setTimeout(connect, retry); retry = Math.min(retry * 2, 8000); };
@@ -2666,6 +2681,35 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   }
   setInterval(tick, 500);
 
+  // ---- host sky view (iframe of the phone page in host mode) ----
+  var view = { yaw: 150, pitch: 30, fov: 75 }, follow = false, lastSend = 0, sendT = null, endT = null;
+  (function () {
+    var src = new URL('./', location.href).href + '?r=' + room + '&hostview=1';
+    if (sv) src += '&server=' + encodeURIComponent(SERVER);
+    $('hSky').src = src;
+  })();
+  function sendView(persist) {
+    lastSend = Date.now();
+    cmd('view', { on: follow, yaw: view.yaw, pitch: view.pitch, fov: view.fov, persist: !!persist });
+  }
+  window.addEventListener('message', function (ev) {
+    if (ev.source !== $('hSky').contentWindow) return;
+    var d = ev.data || {};
+    if (d.type !== 'osong-view') return;
+    view = { yaw: +d.yaw, pitch: +d.pitch, fov: +d.fov };
+    if (!follow) return;
+    // live updates at most ~8 per second, then one saved update when the mouse stops
+    var wait = 125 - (Date.now() - lastSend);
+    clearTimeout(sendT); sendT = setTimeout(function () { sendView(false); }, Math.max(0, wait));
+    clearTimeout(endT); endT = setTimeout(function () { sendView(true); }, 700);
+  });
+  function renderFollow() {
+    $('hFollow').setAttribute('aria-pressed', follow ? 'true' : 'false');
+    $('hFollow').textContent = '참가자 화면 따라오게 하기 · ' + (follow ? '켜짐' : '꺼짐');
+    document.querySelector('.hview').classList.toggle('live', follow);
+  }
+  $('hFollow').addEventListener('click', function () { follow = !follow; renderFollow(); sendView(true); });
+
   // ---- QR / link ----
   function roomLink() { return new URL('./', location.href).href + '?r=' + room; }
   function drawQR() {
@@ -2684,7 +2728,11 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   SPOTS.forEach(function (sp) {
     var b = document.createElement('button'); b.type = 'button'; b.className = 'spot'; b.setAttribute('data-spot', sp.id); b.setAttribute('aria-pressed', 'false');
     b.innerHTML = '<span></span><small></small>'; b.firstChild.textContent = sp.name;
-    b.addEventListener('click', function () { cmd('spot', { v: ST && ST.spot === sp.id ? null : sp.id }); });
+    b.addEventListener('click', function () {
+      var off = ST && ST.spot === sp.id;
+      cmd('spot', { v: off ? null : sp.id });
+      if (!off) try { $('hSky').contentWindow.postMessage({ type: 'osong-lookat', id: sp.id }, '*'); } catch (e) {}
+    });
     box.appendChild(b);
   });
   $('hSpotOff').addEventListener('click', function () { cmd('spot', { v: null }); });
