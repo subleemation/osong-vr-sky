@@ -203,6 +203,8 @@ input[type=range] { accent-color: var(--star); }
 @media (max-width: 480px) { .go { grid-template-columns: 1fr; } .go .btn { min-height: 76px; } }
 #calib { height: auto; min-height: 38px; padding: 8px 15px; }
 .pill { border-radius: 999px; }
+body.intro-on #info, body.intro-on #hint, body.intro-on #clockHud { visibility: hidden; }
+body.intro-on #backBtn { opacity: 0.25; }
 </style>
 
 </head>
@@ -1251,7 +1253,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   }
   function updatePanel(dt) {
     if (PANEL.toastT > 0) PANEL.toastT -= dt;
-    if (st.mode !== 'vr') { PANEL.open = false; PANEL.id = null; return; }
+    if (st.mode !== 'vr' || introCovers()) { PANEL.open = false; PANEL.id = null; return; }
     var f = st.cam.f, pitch = Math.asin(Math.max(-1, Math.min(1, f[2]))) / D2R;
     if (pitch > -30) PANEL.lastAz = C.enuToAltAz(f).az;
     if (!PANEL.open && pitch < -36) { PANEL.open = true; PANEL.yaw = PANEL.lastAz; PANEL.id = null; PANEL.t = 0; }
@@ -1608,6 +1610,8 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     SYNC.art = typeof s.art === 'boolean' ? s.art : null;
     SYNC.story = s.story && s.story.show ? { show: s.story.show, i: s.story.i | 0, t0: Date.now() - (s.story.el || 0) } : null;
     SYNC.view = s.view ? { on: !!s.view.on, yaw: +s.view.yaw || 0, pitch: +s.view.pitch || 0, fov: +s.view.fov || 75 } : null;
+    INTRO.srv = s.intro && s.intro.st ? { st: s.intro.st, n: s.intro.n | 0, len: typeof s.intro.len === 'number' ? s.intro.len : null, t0: Date.now() - (s.intro.el || 0), playT0: Date.now() - (s.intro.pel != null ? s.intro.pel : s.intro.el || 0) } : null;
+    if (INTRO.srv && INTRO.srv.st !== 'wait') introVideo();
     NET.gotState = true;
     SYNC.has = true; SYNC.phase = s.phase || 'idle';
     SYNC.base = s.time; SYNC.speed = s.speed || 0; SYNC.at = Date.now();
@@ -1735,9 +1739,132 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     }
   }
 
+  // ---------- opening film (체험 시작) ----------
+  // The host presses 체험 시작 and every phone runs the same timeline from the server's clock:
+  //   fade the current view to black → play the film → hold black → the real sky fades in over 2 s.
+  // The film is its own file (INTRO_SRC), so it can be replaced without touching this code.
+  // If the file is missing, refuses to play or never ends, the phone holds black briefly and fades in anyway,
+  // so nobody is left on a dark screen. The film is drawn into the canvas, the same picture in both eyes (no parallax).
+  var INTRO_SRC = 'assets/videos/vr-intro.mp4';
+  var IN = { PRE: 0.8, BLACK: 0.6, SKIPBLACK: 0.3, FADE: 2.0, NOFILM: 1.5, WAIT_LOAD: 4, MAXLEN: 60 };
+  var INTRO = { srv: null, n: -1, doneN: -1, state: 'VR_ACTIVE', alpha: 0, showVid: false,
+    vid: null, vidStatus: 'none', dur: 0, started: false, vidOk: false, playFail: false, endE: null, skipEnd: false, cls: false };
+  var EYES = null;
+  function introVideo() {
+    if (INTRO.vid || NET.hostview || !NET.room) return INTRO.vid;
+    var v = document.createElement('video');
+    v.muted = true; v.defaultMuted = true; v.playsInline = true; v.loop = false; v.preload = 'auto';
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.setAttribute('aria-hidden', 'true');
+    v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1';
+    INTRO.vidStatus = 'load';
+    v.addEventListener('loadedmetadata', function () { INTRO.dur = isFinite(v.duration) && v.duration > 0 ? Math.min(v.duration, IN.MAXLEN) : 0; });
+    v.addEventListener('canplay', function () { if (INTRO.vidStatus === 'load') { INTRO.vidStatus = 'ready'; sendHi(); } });
+    v.addEventListener('playing', function () { INTRO.vidOk = true; if (INTRO.vidStatus !== 'ready') { INTRO.vidStatus = 'ready'; sendHi(); } });
+    v.addEventListener('error', function () { INTRO.vidStatus = 'fail'; sendHi(); });
+    v.src = INTRO_SRC;
+    document.body.appendChild(v);
+    try { v.load(); } catch (e) {}
+    INTRO.vid = v;
+    return v;
+  }
+  function introPrime() {
+    // called from a tap (entering VR / screen): lets stricter phones allow the muted film to start later on its own
+    var v = introVideo(); if (!v || INTRO.state !== 'VR_ACTIVE' && INTRO.state !== 'IDLE') return;
+    try { var p = v.play(); if (p && p.then) p.then(function () { if (!INTRO.started) { v.pause(); try { v.currentTime = 0; } catch (e) {} } }, function () {}); } catch (e) {}
+  }
+  function introStopVid(rewind) {
+    var v = INTRO.vid; if (!v) return;
+    if (!v.paused) try { v.pause(); } catch (e) {}
+    if (rewind && v.currentTime > 0) try { v.currentTime = 0; } catch (e) {}
+  }
+  function introPlayAt(p) {
+    var v = INTRO.vid; if (!v) { INTRO.playFail = true; return; }
+    if (!INTRO.started) {
+      INTRO.started = true; INTRO.vidOk = false;
+      try { v.currentTime = p > 0.4 && INTRO.dur ? Math.min(p, INTRO.dur - 0.05) : 0; } catch (e) {}
+      try { var pr = v.play(); if (pr && pr.catch) pr.catch(function () { INTRO.playFail = true; }); } catch (e) { INTRO.playFail = true; }
+      return;
+    }
+    // phones that loaded late catch up with everyone else
+    if (INTRO.vidOk && !v.paused && INTRO.dur && p < INTRO.dur - 0.5 && Math.abs(v.currentTime - p) > 0.6) try { v.currentTime = p; } catch (e) {}
+  }
+  function introSet(state, alpha, showVid) { INTRO.state = state; INTRO.alpha = alpha; INTRO.showVid = !!showVid; }
+  function introEval() {
+    var s = INTRO.srv;
+    if (!s || NET.hostview) { introStopVid(false); introSet('VR_ACTIVE', 0); return; }
+    if (s.st === 'wait') { introStopVid(true); INTRO.n = -1; introSet('IDLE', 1); return; }
+    if (s.n !== INTRO.n) { INTRO.n = s.n; INTRO.started = false; INTRO.vidOk = false; INTRO.playFail = false; INTRO.endE = null; INTRO.skipEnd = false; }
+    if (INTRO.doneN === s.n) { introStopVid(true); introSet('VR_ACTIVE', 0); return; }
+    var now = Date.now(), e = (now - s.playT0) / 1000, p = e - IN.PRE, v = INTRO.vid;
+    var se = s.st === 'skip' ? Math.max(0, (s.t0 - s.playT0) / 1000) : Infinity;
+    // the host sends the film length with the start, so every phone shares one schedule (0 = no film file)
+    var sched = s.len == null ? null : s.len > 0 ? s.len : IN.NOFILM;
+    if (s.len === 0) INTRO.playFail = true;
+    if (INTRO.endE == null && !INTRO.started && sched != null && e > IN.PRE + sched && e < se) {
+      // joined after the film: go straight to wherever everyone else is (black, fading in, or the sky)
+      if (e > IN.PRE + sched + IN.BLACK + IN.FADE) { INTRO.doneN = s.n; introSet('VR_ACTIVE', 0); return; }
+      INTRO.endE = IN.PRE + sched;
+    }
+    if (INTRO.endE == null) {
+      if (e >= se) { INTRO.endE = Math.max(IN.PRE, se); INTRO.skipEnd = true; }
+      else if (e < IN.PRE) { introVideo(); introSet('INTRO_PLAYING', e / IN.PRE); return; }
+      else if (!v || INTRO.vidStatus === 'fail' || INTRO.playFail) { var hold = sched || IN.NOFILM; if (p >= hold) INTRO.endE = IN.PRE + hold; }  // no film here: stay black with everyone
+      else {
+        introPlayAt(p);
+        if (v.ended || (INTRO.dur && p >= INTRO.dur)) INTRO.endE = INTRO.dur ? Math.min(e, IN.PRE + INTRO.dur + 0.2) : e;
+        else if (!INTRO.vidOk && p >= IN.WAIT_LOAD) { INTRO.playFail = true; introStopVid(false); }  // it never got going on this phone
+        else if (p >= IN.MAXLEN) INTRO.endE = e;                          // no 'ended' and no length: stop anyway
+      }
+      if (INTRO.endE == null) { introSet('INTRO_PLAYING', 1, INTRO.vidOk && v && v.readyState >= 2); return; }
+      introStopVid(false);
+    }
+    var k = e - INTRO.endE, b = INTRO.skipEnd ? IN.SKIPBLACK : IN.BLACK;
+    if (k < b) { introSet('INTRO_BLACKOUT', 1); return; }
+    if (k < b + IN.FADE) { var q = (k - b) / IN.FADE; introSet('VR_FADING_IN', 1 - q * q * (3 - 2 * q)); return; }
+    INTRO.doneN = s.n; introStopVid(true); st.vrT = performance.now();
+    introSet('VR_ACTIVE', 0);
+  }
+  function introCovers() { return st.mode !== 'menu' && INTRO.alpha > 0.5; }
+  function drawIntro() {
+    var on = st.mode !== 'menu' && (INTRO.alpha > 0.001 || INTRO.showVid);
+    var cls = on && st.mode === 'screen';
+    if (cls !== INTRO.cls) { INTRO.cls = cls; document.body.classList.toggle('intro-on', cls); }
+    if (!on) return;
+    var c = ctx;
+    c.save();
+    if (INTRO.alpha > 0.001) { c.globalAlpha = Math.min(1, INTRO.alpha); c.fillStyle = '#000'; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
+    var v = INTRO.vid;
+    if (INTRO.showVid && v) {
+      var vw = v.videoWidth || 16, vh = v.videoHeight || 9;
+      if (st.mode === 'vr' && EYES) {
+        for (var i = 0; i < 2; i++) {
+          var E = EYES[i], w = Math.min(E.R * 2 * 0.96, E.clip[2]), h = w * vh / vw;
+          c.save(); c.beginPath(); c.rect(E.clip[0], E.clip[1], E.clip[2], E.clip[3]); c.clip();
+          try { c.drawImage(v, E.cx - w / 2, E.cy - h / 2, w, h); } catch (x) {}
+          var vg = c.createRadialGradient(E.cx, E.cy, E.R * 0.92, E.cx, E.cy, E.R * 1.25);
+          vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,1)');
+          c.fillStyle = vg; c.fillRect(E.clip[0], E.clip[1], E.clip[2], E.clip[3]);
+          c.restore();
+        }
+      } else {
+        var sc = Math.min(W / vw, H / vh), dw = vw * sc, dh = vh * sc;
+        try { c.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh); } catch (x) {}
+      }
+    }
+    if (INTRO.state === 'IDLE') {
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = 'rgba(241,242,245,0.42)';
+      var spots = st.mode === 'vr' && EYES ? EYES : [{ cx: W / 2, cy: H / 2, R: Math.min(W, H) / 2 }];
+      for (var j = 0; j < spots.length; j++) {
+        c.font = Math.round(Math.max(13, Math.min(20, spots[j].R / 9))) + 'px ' + LABEL_FONT;
+        c.fillText('잠시 후 시작해요', spots[j].cx, spots[j].cy);
+      }
+    }
+    c.restore();
+  }
+
   var wsRetry = 1000, lastSentMode = null;
   function hiMode() { return NET.hostview ? 'host' : NET.sim ? 'sim' : st.mode; }
-  function sendHi() { if (NET.ws && NET.ws.readyState === 1) { try { NET.ws.send(JSON.stringify({ k: 'hi', m: hiMode() })); lastSentMode = st.mode; } catch (e) {} } }
+  function sendHi() { if (NET.ws && NET.ws.readyState === 1) { try { NET.ws.send(JSON.stringify({ k: 'hi', m: hiMode(), v: INTRO.vidStatus })); lastSentMode = st.mode; } catch (e) {} } }
   function connect() {
     var ws;
     try { ws = new WebSocket(SERVER + '/ws?room=' + NET.room); } catch (e) { NET.status = 'lost'; renderNetChip(); setTimeout(connect, 5000); return; }
@@ -1757,12 +1884,15 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     renderNetChip();
   }
   startPhoneLink();
+  if (NET.room && !NET.hostview) setTimeout(introVideo, 1500);  // fetch the film early so it is ready when the host starts
 
   var last = performance.now(), lastInfoKey = '';
   function loop(now) {
     var dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (!artReady && window.SKY_ART) initArt();
-    artPerf(dt);
+    introEval();
+    var hidden = introCovers() && INTRO.alpha >= 0.999;
+    if (!introCovers()) artPerf(dt);
     var synced = netTick();
     STORY.ev = storyOn() ? storyEval() : null;
     if (STORY.ev) { st.minutes = STORY.ev.minutes; synced = true; }
@@ -1785,7 +1915,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     computeFrame();
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    var sel = (st.mode === 'menu' || (st.mode === 'vr' && PANEL.open) || STORY.ev) ? null : pickTarget();
+    var sel = (st.mode === 'menu' || (st.mode === 'vr' && PANEL.open) || STORY.ev || introCovers()) ? null : pickTarget();
     updateArtFocus(dt, sel);
     if (st.mode === 'vr') {
       var half = W / 2;
@@ -1793,13 +1923,16 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
       var R = Math.min(half / 2 + 8, H / 2) * 1.0;
       var f = (half / 2) / Math.tan(st.fov / 2 * D2R);
       var font = Math.max(11, Math.min(18, half / 26));
-      drawView({ cx: W / 2 - sep / 2, cy: H / 2, f: f, R: R, k: st.warp, clip: [0, 0, half, H], vr: true, sel: sel, font: font });
-      drawView({ cx: W / 2 + sep / 2, cy: H / 2, f: f, R: R, k: st.warp, clip: [half, 0, half, H], vr: true, sel: sel, font: font });
-      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(half - 0.5, 0, 1, H);
+      EYES = [{ cx: W / 2 - sep / 2, cy: H / 2, R: R, clip: [0, 0, half, H] }, { cx: W / 2 + sep / 2, cy: H / 2, R: R, clip: [half, 0, half, H] }];
+      if (!hidden) {
+        drawView({ cx: W / 2 - sep / 2, cy: H / 2, f: f, R: R, k: st.warp, clip: [0, 0, half, H], vr: true, sel: sel, font: font });
+        drawView({ cx: W / 2 + sep / 2, cy: H / 2, f: f, R: R, k: st.warp, clip: [half, 0, half, H], vr: true, sel: sel, font: font });
+      }
+      ctx.fillStyle = hidden ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.25)'; ctx.fillRect(half - 0.5, 0, 1, H);
     } else {
       var fv = st.mode === 'menu' ? 80 : st.zoomFov;
       var ff = (Math.max(W, H) / 2) / Math.tan(fv / 2 * D2R);
-      drawView({ cx: W / 2, cy: st.mode === 'menu' ? H * 0.32 : H / 2, f: ff, R: 1, k: 0, clip: [0, 0, W, H], vr: false, sel: sel, font: Math.max(13, Math.min(17, W / 40)) });
+      if (!hidden) drawView({ cx: W / 2, cy: st.mode === 'menu' ? H * 0.32 : H / 2, f: ff, R: 1, k: 0, clip: [0, 0, W, H], vr: false, sel: sel, font: Math.max(13, Math.min(17, W / 40)) });
       if (st.mode === 'screen') {
         var key = sel ? sel.name : '';
         if (key !== lastInfoKey) {
@@ -1809,6 +1942,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
         }
       }
     }
+    drawIntro();
     requestAnimationFrame(loop);
   }
   function baseSep() { return 360; } // ~63 mm on most phones (5.6-6 CSS px per mm)
@@ -1871,6 +2005,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
 
   function enter(mode) {
     st.mode = mode; st.vrT = performance.now(); PANEL.open = false; PANEL.id = null;
+    introPrime();
     $('menu').hidden = true;
     $('hud').hidden = mode !== 'screen';
     $('hint').hidden = mode !== 'screen';
@@ -2018,7 +2153,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     });
   }
   requestAnimationFrame(loop);
-  window.__sky = { st: st, frame: function () { return frame; } };
+  window.__sky = { intro: INTRO,  st: st, frame: function () { return frame; } };
 })();
 </script>
 

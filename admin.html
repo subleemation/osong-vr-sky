@@ -171,6 +171,9 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
 #sCue::before { content: "“"; } #sCue::after { content: "”"; }
 .hplab { margin-bottom: 8px; }
 .top { align-items: center; }
+.istate { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink); }
+.istate.dim { color: var(--muted); }
+#iStart { flex: 1; }
 </style>
 </head>
 <body>
@@ -221,6 +224,18 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
     </div>
 
     <aside class="side">
+      <section aria-labelledby="inH">
+        <h2 id="inH">시작</h2>
+        <div class="bar"><button class="hb go2 wide" id="iStart" type="button">체험 시작</button></div>
+        <div class="bar">
+          <button class="hb" id="iSkip" type="button">오프닝 건너뛰기</button>
+          <button class="hb" id="iReplay" type="button">오프닝 다시 재생</button>
+          <button class="hb warn" id="iReset" type="button">체험 초기화</button>
+        </div>
+        <p class="istate" id="iState"></p>
+        <p class="istate dim" id="iFilm"></p>
+      </section>
+
       <section aria-labelledby="stH">
         <div class="bar spread"><h2 id="stH">이야기</h2></div>
         <select id="sShow" aria-label="이야기 고르기"></select>
@@ -2883,6 +2898,7 @@ window.STORY_SHOWS = [
   }
   function tick() {
     storyState();
+    if (typeof introRender === 'function') introRender();
     if (!ST) return;
     var rem = timerRem();
     $('hBig').textContent = (curStory() ? '이야기 ' + (ST.story.i + 1) + '장면' : phaseName(ST.phase)) + (ST.timer ? '  ' + (ST.timer.label ? ST.timer.label + ' ' : '') + fmtTime(rem) + (ST.timer.paused ? ' (멈춤)' : '') : '');
@@ -2900,6 +2916,59 @@ window.STORY_SHOWS = [
     });
   }
   setInterval(tick, 500);
+
+  // ---- opening film (체험 시작) ----
+  // same timeline numbers as the phones (sky_app.js INTRO), used here only to show what the phones are doing
+  var INTRO_SRC = 'assets/videos/vr-intro.mp4';
+  var IN = { PRE: 0.8, BLACK: 0.6, SKIPBLACK: 0.3, FADE: 2.0, NOFILM: 1.5 };
+  var film = { status: 'check', dur: 0 };
+  (function () {
+    var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true;
+    v.addEventListener('loadedmetadata', function () { film.status = 'ok'; film.dur = isFinite(v.duration) ? v.duration : 0; introRender(); });
+    v.addEventListener('error', function () { film.status = 'none'; introRender(); });
+    v.src = INTRO_SRC;
+  })();
+  function introNow() {
+    if (!ST || !ST.intro) return { phase: 'sky', busy: false };
+    var I = ST.intro, since = (Date.now() - stAt) / 1000, e = (I.pel || 0) / 1000 + since;
+    if (I.st === 'wait') return { phase: 'wait', busy: false };
+    var len = I.len > 0 ? I.len : IN.NOFILM, hasFilm = I.len > 0;
+    if (I.st === 'skip') {
+      var k = (I.el || 0) / 1000 + since;
+      return k < IN.SKIPBLACK + IN.FADE ? { phase: 'fade', busy: true } : { phase: 'sky', busy: false, ran: true };
+    }
+    if (e < IN.PRE) return { phase: 'dark', busy: true, film: true };
+    if (e < IN.PRE + len) return { phase: hasFilm ? 'film' : 'dark', busy: true, film: true, left: IN.PRE + len - e };
+    if (e < IN.PRE + len + IN.BLACK) return { phase: 'dark', busy: true, film: true };
+    if (e < IN.PRE + len + IN.BLACK + IN.FADE) return { phase: 'fade', busy: true };
+    return { phase: 'sky', busy: false, ran: true };
+  }
+  var resetArm = 0;
+  function introRender() {
+    var x = introNow();
+    $('iState').textContent =
+      x.phase === 'wait' ? '대기 중이에요. 참가자 화면은 검게 가려져 있어요.' :
+      x.phase === 'dark' ? '화면이 어두워지는 중이에요.' :
+      x.phase === 'film' ? '오프닝 영상 재생 중 · ' + Math.ceil(x.left) + '초 남음' :
+      x.phase === 'fade' ? '별 화면이 서서히 나타나는 중이에요.' :
+      '참가자 화면에 별이 보이고 있어요.';
+    $('iStart').disabled = x.busy || (ST && ST.intro && ST.intro.st !== 'wait');
+    $('iSkip').disabled = !x.film;
+    $('iReplay').disabled = x.busy || !(ST && ST.intro && ST.intro.st !== 'wait');
+    var f = film.status === 'ok' ? '오프닝 영상 ' + (film.dur ? Math.round(film.dur) + '초' : '') + ' · 영상이 준비된 폰 ' + (counts.film || 0) + '/' + (counts.phones || 0) + '대' + (counts.filmFail ? ' (못 불러온 폰 ' + counts.filmFail + '대는 영상 없이 넘어가요)' : '') :
+      film.status === 'none' ? '오프닝 영상 파일이 아직 없어요. 시작하면 검은 화면 뒤 바로 별 화면이 나타나요.' : '오프닝 영상 확인 중…';
+    $('iFilm').textContent = f;
+    if (resetArm && Date.now() > resetArm) { resetArm = 0; $('iReset').textContent = '체험 초기화'; }
+  }
+  function filmLen() { return film.status === 'ok' && film.dur ? Math.round(film.dur * 100) / 100 : 0; }
+  $('iStart').addEventListener('click', function () { if (!this.disabled) cmd('intro', { v: 'play', len: filmLen() }); });
+  $('iReplay').addEventListener('click', function () { if (!this.disabled) cmd('intro', { v: 'play', len: filmLen() }); });
+  $('iSkip').addEventListener('click', function () { if (!this.disabled) cmd('intro', { v: 'skip' }); });
+  $('iReset').addEventListener('click', function () {
+    if (!resetArm) { resetArm = Date.now() + 3000; this.textContent = '한 번 더 누르면 초기화'; return; }
+    resetArm = 0; this.textContent = '체험 초기화'; cmd('intro', { v: 'wait' });
+  });
+
 
   // ---- host sky view (iframe of the phone page in host mode) ----
   var view = { yaw: 150, pitch: 30, fov: 75 }, follow = false, followAt = 0, lastSend = 0, sendT = null, endT = null;

@@ -47,6 +47,7 @@ export class Room {
       view: this.view || s.view || null,
       art: typeof s.art === 'boolean' ? s.art : null,
       story: s.story ? { show: s.story.show, i: s.story.i, el: Date.now() - s.story.at } : null,
+      intro: s.intro ? { st: s.intro.st, n: s.intro.n, len: s.intro.len, el: Date.now() - s.intro.at, pel: Date.now() - (s.intro.pat || s.intro.at) } : null,
     };
     return JSON.stringify(out);
   }
@@ -55,14 +56,14 @@ export class Room {
     for (const ws of this.ctx.getWebSockets()) { try { ws.send(msg); } catch (e) {} }
   }
   counts() {
-    let phones = 0, vr = 0, admins = 0;
+    let phones = 0, vr = 0, admins = 0, film = 0, filmFail = 0;
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() || {};
       if (a.role === 'admin') admins++;
       else if (a.mode === 'host' || a.mode === 'sim') continue; // host's own sky view and preview pages are not participants
-      else { phones++; if (a.mode === 'vr') vr++; }
+      else { phones++; if (a.mode === 'vr') vr++; if (a.vid === 'ready') film++; else if (a.vid === 'fail') filmFail++; }
     }
-    return { k: 'counts', phones, vr, admins };
+    return { k: 'counts', phones, vr, admins, film, filmFail };
   }
   pushCounts() {
     const c = JSON.stringify(this.counts());
@@ -89,6 +90,7 @@ export class Room {
     const att = ws.deserializeAttachment() || { role: 'phone', mode: 'menu' };
     if (m.k === 'hi') {
       att.mode = ['vr', 'screen', 'host', 'sim'].includes(m.m) ? m.m : 'menu';
+      att.vid = ['ready', 'load', 'fail', 'none'].includes(m.v) ? m.v : 'none';
       ws.serializeAttachment(att); this.pushCounts(); return;
     }
     if (m.k === 'auth') {
@@ -149,7 +151,21 @@ export class Room {
         s.plan = { order: m.order === 'FG' ? 'FG' : 'GF', steps, i: 0 }; this.planEnter(s, 0); break;
       }
       case 'next': this.planNext(s); break;
-      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; break;
+      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; break;
+      case 'intro': {
+        // opening film: wait (everyone black) → play → (skip) ; phones run the timeline themselves from 'at'
+        const cur = s.intro, n = ((cur && cur.n) || 0) + 1;
+        if (m.v === 'play') {
+          if (cur && cur.st === 'play' && now - cur.at < 2500) break;          // double clicks
+          s.intro = { st: 'play', n, at: now, pat: now, len: this.clip(m.len, 0, 60, 0) }; s.hold = false;
+        } else if (m.v === 'skip') {
+          if (cur && cur.st === 'play' && now - cur.at < 70000) s.intro = { st: 'skip', n: cur.n, at: now, pat: cur.pat, len: cur.len };
+        } else if (m.v === 'wait') {
+          s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null;
+          s.intro = { st: 'wait', n, at: now, pat: now };
+        } else if (m.v === 'off') s.intro = null;
+        break;
+      }
       case 'pause': if (s.timer) { if (s.timer.paused) { s.timer.paused = false; s.timer.end = now + s.timer.rem; } else { s.timer.rem = Math.max(0, s.timer.end - now); s.timer.paused = true; } } break;
       case 'phase': if (!s.plan && (m.v === 'guide' || m.v === 'free')) { s.phase = m.v; if (m.v === 'free') s.spot = null; } break;
       case 'spot': s.spot = typeof m.v === 'string' ? m.v.slice(0, 12) : null; if (s.spot && !s.plan && s.phase !== 'guide') s.phase = 'guide'; break;
