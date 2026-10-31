@@ -221,6 +221,25 @@
     return null;
   }
   function playLocal(id) { local = { id: id, scene: 0, start: performance.now() }; }
+  // fade between "looking around" and a show: dark out (0.7 s), switch, fade the new view in (1.4 s)
+  var VEIL = { phase: null, t0: 0, a: 0, el: null, shown: -1, lastA: null };
+  function veilStep(now, a) {
+    if (!VEIL.el) { VEIL.el = document.createElement('div'); VEIL.el.setAttribute('aria-hidden', 'true');
+      VEIL.el.style.cssText = 'position:fixed;inset:0;background:#000;pointer-events:none;z-index:14;opacity:0;display:none'; document.body.appendChild(VEIL.el); }
+    var covered = window.VRIntro && VRIntro.covers();
+    if (!!a !== showOn && !VEIL.phase && st.mode !== 'menu' && !covered) { VEIL.phase = 'out'; VEIL.t0 = now; }
+    if (VEIL.phase === 'out') {
+      var k = (now - VEIL.t0) / 700; VEIL.a = Math.min(1, k * k);
+      if (k < 1) a = showOn ? (a || VEIL.lastA) : null;   // keep the old view until the screen is dark
+      else { VEIL.phase = 'in'; VEIL.t0 = now; }
+    }
+    if (VEIL.phase === 'in') { var k2 = (now - VEIL.t0) / 1400; VEIL.a = 1 - ease(k2); if (k2 >= 1) { VEIL.phase = null; VEIL.a = 0; } }
+    if (st.mode === 'menu') { VEIL.phase = null; VEIL.a = 0; }
+    var op = Math.round(VEIL.a * 100) / 100;
+    if (op !== VEIL.shown) { VEIL.shown = op; VEIL.el.style.opacity = op; VEIL.el.style.display = op > 0 ? 'block' : 'none'; }
+    if (a) VEIL.lastA = a;
+    return a;
+  }
   function onShowStart(a) {
     showOn = true; showJoin = performance.now(); vrStep.index = -1;
     joinCam = { yaw: st.yaw, pitch: st.pitch, fov: st.zoomFov };
@@ -290,7 +309,7 @@
   var last = performance.now(), lastCardKey = null, lastCap = '';
   function loop(now) {
     var dt = Math.min(0.1, (now - last) / 1000); last = now;
-    var a = activeShow();
+    var a = veilStep(now, activeShow());
     if (a && !showOn) onShowStart(a);
     if (!a && showOn) onShowEnd();
     var ev = a ? ShowTimeline.evaluate(eng, a.show, a.scene, a.t) : null;
@@ -468,6 +487,7 @@
   function enter(mode) {
     st.mode = mode; st.vrT = performance.now(); PANEL.open = false; PANEL.id = null;
     if (window.VRIntro) VRIntro.prime();
+    if (showOn) { VEIL.phase = 'in'; VEIL.t0 = performance.now(); VEIL.a = 1; }   // joining a running show: fade in instead of popping in
     $('menu').hidden = true;
     $('hud').hidden = mode !== 'screen';
     $('hint').hidden = mode !== 'screen' || showOn;
