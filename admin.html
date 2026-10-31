@@ -119,6 +119,46 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .lbox h1 { margin: 0 0 6px; font-weight: 800; font-size: 28px; letter-spacing: -0.035em; }
 .lbox input { padding: 11px 12px; font-size: 16px; }
 .lerr { color: var(--red); min-height: 1.4em; font-size: 14px; }
+
+/* ---- buttons, second pass: soft pills, a hairline edge, a real switch for on/off ---- */
+.hb { height: 36px; padding: 0 15px; border-radius: 999px; font-size: 13.5px; font-weight: 600; letter-spacing: -0.015em; white-space: nowrap;
+  background: linear-gradient(180deg, #1d1e25 0%, #16171c 100%); border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.55);
+  transition: background-color .15s, border-color .15s, color .15s, transform .08s; }
+.hb:hover { border-color: rgba(255, 255, 255, 0.18); background: linear-gradient(180deg, #24252d 0%, #1b1c22 100%); }
+.hb:active { transform: scale(0.97); }
+.hb.go2, .hb[aria-pressed="true"] { color: #241c0b; border-color: #c9ad66;
+  background: linear-gradient(180deg, #f1dba0 0%, #e2c57d 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 2px rgba(0, 0, 0, 0.55); }
+.hb.go2 { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 2px rgba(0, 0, 0, 0.55), 0 8px 22px -10px #e8cf8a; }
+.hb.go2:hover, .hb[aria-pressed="true"]:hover { background: linear-gradient(180deg, #f5e2b0 0%, #e8cd88 100%); border-color: #d4b872; }
+.hb.warn { color: #ff9d85; border-color: rgba(255, 143, 115, 0.28); }
+.hb.wide { height: 46px; font-size: 15px; padding: 0 18px; }
+.hb:disabled { opacity: 0.32; transform: none; }
+
+/* on/off: the label stays put, a small switch on the right says the state */
+.hb.sw, .hb.sw[aria-pressed="true"] { padding: 0 8px 0 15px; gap: 10px; color: var(--ink);
+  background: linear-gradient(180deg, #1d1e25 0%, #16171c 100%); border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.55); }
+.hb.sw:hover { border-color: rgba(255, 255, 255, 0.18); background: linear-gradient(180deg, #24252d 0%, #1b1c22 100%); }
+.hb.sw::after { content: ""; flex: none; width: 34px; height: 20px; border-radius: 999px; background-color: #2c2d35;
+  background-image: radial-gradient(circle, #c4c6cf 0 7px, transparent 7.5px); background-repeat: no-repeat; background-size: 20px 20px; background-position: 0 0;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); transition: background-position .2s ease, background-color .2s ease; }
+.hb.sw[aria-pressed="true"]::after { background-color: #e8cf8a; background-image: radial-gradient(circle, #241c0b 0 7px, transparent 7.5px); background-position: 14px 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.hb.warn.sw { color: #ff9d85; }
+.hb.warn.sw[aria-pressed="true"]::after { background-color: #ff8f73; }
+
+/* one-of-a-few choices sit in a single track */
+.seg { display: inline-flex; align-self: flex-start; gap: 2px; padding: 3px; border-radius: 999px; background: #101115; border: 1px solid rgba(255, 255, 255, 0.07); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); flex-wrap: wrap; }
+.seg .hb { height: 30px; padding: 0 14px; background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
+.seg .hb:hover { color: var(--ink); background: transparent; border-color: transparent; }
+.seg .hb[aria-pressed="true"], .seg .hb[aria-pressed="true"]:hover { color: #241c0b; background: linear-gradient(180deg, #f1dba0 0%, #e2c57d 100%); border-color: #c9ad66; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 3px rgba(0, 0, 0, 0.5); }
+
+.spot { border-radius: 12px; padding: 8px 12px; background: linear-gradient(180deg, #1d1e25 0%, #16171c 100%); border-color: rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); transition: border-color .15s; }
+.spot[aria-pressed="true"] { background: linear-gradient(180deg, #f1dba0 0%, #e2c57d 100%); border-color: #c9ad66; color: #241c0b; }
+.spot[aria-pressed="true"] small { color: rgba(36, 28, 11, 0.7); }
+input[type=text], input[type=number], select { height: 36px; padding: 0 12px; border-radius: 10px; background: #101115; border-color: rgba(255, 255, 255, 0.1); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); }
+.big { border-radius: 999px; padding: 6px 14px; background: linear-gradient(180deg, #f1dba0 0%, #e2c57d 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5); }
 </style>
 </head>
 <body>
@@ -151,9 +191,9 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
       <div class="bar spread">
         <span class="label">진행자 하늘 · 끌어서 돌리기 · 휠로 확대</span>
         <div class="bar">
-          <button class="hb" id="hFollow" type="button" aria-pressed="false">따라오게 하기 · 꺼짐</button>
-          <button class="hb" id="hArt" type="button" aria-pressed="true">별자리 그림 · 켜짐</button>
-          <button class="hb" id="hPrevToggle" type="button" aria-pressed="true" aria-controls="hPrev">미리보기 · 숨기기</button>
+          <button class="hb sw" id="hFollow" type="button" aria-pressed="false">따라오게 하기</button>
+          <button class="hb sw" id="hArt" type="button" aria-pressed="true">별자리 그림</button>
+          <button class="hb sw" id="hPrevToggle" type="button" aria-pressed="true" aria-controls="hPrev">미리보기</button>
         </div>
       </div>
       <div class="hframe"><iframe id="hSky" title="진행자 하늘 화면" allow="fullscreen"></iframe></div>
@@ -206,7 +246,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
       <details>
         <summary>진행 순서 · 타이머</summary>
         <div>
-          <div class="bar">
+          <div class="seg">
             <button class="hb" id="hOrderGF" type="button" aria-pressed="true">① 설명 → 자유 관찰</button>
             <button class="hb" id="hOrderFG" type="button" aria-pressed="false">② 자유 관찰 → 설명</button>
           </div>
@@ -244,7 +284,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
         <div>
           <div class="hclock" id="hClock">오후 7:30</div>
           <input type="range" id="hTime" min="30" max="180" step="5" value="90" aria-label="하늘 시각">
-          <div class="bar" id="hSpeed">
+          <div class="seg" id="hSpeed">
             <button class="hb" type="button" data-hspeed="0" aria-pressed="true">멈춤</button>
             <button class="hb" type="button" data-hspeed="1" aria-pressed="false">실제 속도</button>
             <button class="hb" type="button" data-hspeed="60" aria-pressed="false">빠르게</button>
@@ -261,7 +301,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
             <button class="hb" type="button" data-hnote="질문 있나요?">질문 있나요?</button>
             <button class="hb" type="button" data-hnote="헤드셋을 잠깐 벗어요">헤드셋을 잠깐 벗어요</button>
           </div>
-          <div class="bar"><button class="hb warn" id="hHold" type="button" aria-pressed="false">화면 가리기 (쉬는 시간)</button></div>
+          <div class="bar"><button class="hb warn sw" id="hHold" type="button" aria-pressed="false">화면 가리기 (쉬는 시간)</button></div>
           <p class="hn">‘화면 가리기’를 누르면 모든 폰이 어두워지고 ‘헤드셋을 벗고 앞을 봐 주세요’가 떠요.</p>
         </div>
       </details>
@@ -2824,7 +2864,7 @@ window.STORY_SHOWS = [
     $('hPlanInfo').textContent = run ? (ST.plan.i + 1) + '/' + ST.plan.n + '단계 · ' + ST.plan.label : '순서를 고르고 시작을 누르세요';
     $('hPause').textContent = ST.timer && ST.timer.paused ? '재개' : '일시정지';
     $('hHold').setAttribute('aria-pressed', ST.hold ? 'true' : 'false');
-    $('hHold').textContent = ST.hold ? '화면 가리기 끄기' : '화면 가리기 (쉬는 시간)';
+    $('hHold').title = ST.hold ? '켜짐' : '꺼짐';
     document.querySelectorAll('#hSpeed [data-hspeed]').forEach(function (b) { b.setAttribute('aria-pressed', +b.getAttribute('data-hspeed') === ST.speed ? 'true' : 'false'); });
     $('hManualTimers').classList.toggle('off', run);
     $('hPhaseG').setAttribute('aria-pressed', ST.phase === 'guide' ? 'true' : 'false');
@@ -2832,7 +2872,7 @@ window.STORY_SHOWS = [
     $('hPhaseG').disabled = $('hPhaseF').disabled = run;
     var artOn = ST.art !== false;
     $('hArt').setAttribute('aria-pressed', artOn ? 'true' : 'false');
-    $('hArt').textContent = '별자리 그림 · ' + (artOn ? '켜짐' : '꺼짐');
+    $('hArt').title = artOn ? '켜짐' : '꺼짐';
     if (document.activeElement !== $('hNote') && $('hNote').value !== ST.note && ST.note) $('hNote').value = ST.note;
     renderStory();
     tick();
@@ -2881,7 +2921,7 @@ window.STORY_SHOWS = [
   });
   function renderFollow() {
     $('hFollow').setAttribute('aria-pressed', follow ? 'true' : 'false');
-    $('hFollow').textContent = '따라오게 하기 · ' + (follow ? '켜짐' : '꺼짐');
+    $('hFollow').title = follow ? '켜짐' : '꺼짐';
     document.querySelector('.hview').classList.toggle('live', follow);
   }
   $('hFollow').addEventListener('click', function () { follow = !follow; followAt = Date.now(); renderFollow(); sendView(true); });
@@ -2897,7 +2937,7 @@ window.STORY_SHOWS = [
   function renderPrev() {
     $('hPrev').hidden = !prevOn;
     $('hPrevToggle').setAttribute('aria-pressed', prevOn ? 'true' : 'false');
-    $('hPrevToggle').textContent = '미리보기 · ' + (prevOn ? '숨기기' : '보이기');
+    $('hPrevToggle').title = prevOn ? '보이는 중' : '숨김';
     // unloading the frames when hidden keeps the laptop from drawing three skies at once
     $('pVR').src = prevOn ? prevSrc('vr') : 'about:blank';
     $('pSC').src = prevOn ? prevSrc('screen') : 'about:blank';
