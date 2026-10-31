@@ -85,3 +85,25 @@ select { appearance: none; background: var(--ink-2); color: var(--paper); border
 .intro-row .tbtn { flex: 1; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
 .tbtn.warn { color: #e8a090; border-color: rgba(224, 122, 106, 0.45); }
 .intro-state { margin: 10px 0 0; font-size: 14px; color: var(--paper-2); }
+
+/* participant screens (js/cctv.js) */
+.cctv-block .con-label .btn-line { padding: 4px 9px; font-size: 12px; }
+.cctv-block .con-label b { font-weight: 500; color: var(--paper); margin-left: 4px; }
+.cctv-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.cctv-empty { grid-column: 1 / -1; margin: 0; padding: 14px 0; font-size: 13px; color: var(--muted); }
+.cam { margin: 0; position: relative; background: #000; border: 1px solid var(--rule); aspect-ratio: 4 / 3; overflow: hidden; }
+.cam img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam figcaption { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; align-items: baseline; padding: 3px 6px; font-size: 11px; color: var(--paper-2);
+  background: linear-gradient(0deg, rgba(7, 9, 15, 0.85), rgba(7, 9, 15, 0)); white-space: nowrap; overflow: hidden; }
+.cam figcaption b { font-family: var(--mono); font-weight: 500; color: var(--paper); }
+.cam figcaption em { margin-left: auto; font-style: normal; color: var(--brass); }
+.cam.stale { opacity: 0.4; }
+.cam.stale figcaption em::after { content: ' 끊김?'; color: #e07a6a; }
+#cctvWall { position: fixed; inset: 0; z-index: 30; background: var(--ink); display: flex; flex-direction: column; }
+.cctv-wall-head { display: flex; align-items: baseline; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--rule); }
+.cctv-wall-head b { font-family: var(--serif); font-size: 20px; }
+.cctv-wall-head .btn-line { margin-left: auto; padding: 6px 12px; font-size: 13px; }
+.cctv-wall-body { flex: 1; overflow-y: auto; padding: 14px 20px 24px; }
+.cctv-grid.big { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.cctv-grid.big .cam figcaption { font-size: 13px; padding: 5px 8px; }
+.cctv-block .btn-line, .cctv-wall-head .btn-line { grid-row: auto; grid-column: auto; }
