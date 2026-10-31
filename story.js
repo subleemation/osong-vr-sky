@@ -18,7 +18,7 @@ window.STORY_SHOWS = [
         fx: [{ type: 'timelapse', from: 0, to: 92, at: 0.5, dur: 14 }, { type: 'labels', from: 0, to: 1, at: 13, dur: 2 }],
         title: '해가 지면, 별이 하나씩', sub: '오후 6시 → 7시 반을 14초 만에',
         cue: '가장 먼저 보이는 별을 찾으면 손을 들어 주세요',
-        note: '오늘 해는 오후 5시 34분에 졌어요. 한 시간 반을 14초로 줄여서 보여 줄게요. 서쪽 높은 곳에 먼저 나타난 밝은 별 두 개가 직녀성과 견우성이에요. 밝은 별일수록 먼저 보여요.' },
+        note: '오늘 해는 오후 5시 34분에 져요. 한 시간 반을 14초로 줄여서 보여 줄게요. 서쪽 높은 곳에 먼저 나타난 밝은 별 두 개가 직녀성과 견우성이에요. 밝은 별일수록 먼저 보여요.' },
 
       { view: { target: { altaz: [58, 175] }, fov: 108, minutes: 92 }, move: 5,
         fx: [{ type: 'labels', from: 1, to: 0, at: 0, dur: 1.5 }, { type: 'lightsOut', from: 2.5, to: 6.3, at: 2, dur: 10 }],
