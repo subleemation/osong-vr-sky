@@ -1745,7 +1745,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   // The film is its own file (INTRO_SRC), so it can be replaced without touching this code.
   // If the file is missing, refuses to play or never ends, the phone holds black briefly and fades in anyway,
   // so nobody is left on a dark screen. The film is drawn into the canvas, the same picture in both eyes (no parallax).
-  var INTRO_SRC = 'assets/videos/vr-intro.mp4';
+  var INTRO_SRC = 'assets/videos/vr-intro.mp4?v=2';
   var IN = { PRE: 0.8, BLACK: 0.6, SKIPBLACK: 0.3, FADE: 2.0, NOFILM: 1.5, WAIT_LOAD: 4, MAXLEN: 60 };
   var INTRO = { srv: null, n: -1, doneN: -1, state: 'VR_ACTIVE', alpha: 0, showVid: false,
     vid: null, vidStatus: 'none', dur: 0, started: false, vidOk: false, playFail: false, endE: null, skipEnd: false, cls: false };
