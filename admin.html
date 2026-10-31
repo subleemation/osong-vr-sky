@@ -6,15 +6,15 @@
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
 <title>진행자 화면 · 별이 빛나는 밤에</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#17112c">
+<meta name="theme-color" content="#0c0d11">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
 /* Host console: sky on the left, a quiet control column on the right. Dark, square, cream accents. */
 :root {
-  --bg: #17112c; --bg2: #221a40; --bg3: #2d2252;
-  --line: rgba(196, 178, 255, 0.16); --line2: rgba(196, 178, 255, 0.3);
-  --ink: #f2eeff; --muted: #b0a6d2; --faint: #7d72a3;
+  --bg: #0c0d11; --bg2: #17181e; --bg3: #202128;
+  --line: rgba(255, 255, 255, 0.11); --line2: rgba(255, 255, 255, 0.22);
+  --ink: #f1f2f5; --muted: #a4a7b3; --faint: #6f7280;
   --cream: #e8cf8a; --cream-ink: #2b2312; --amber: #e8cf8a; --red: #ff8f73; --ok: #8fd6a0; --edge: #b49853;
   --serif: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
   --sans: var(--serif);
@@ -62,7 +62,7 @@ button, input, select { font: inherit; color: inherit; }
 .hb:hover { border-color: var(--line2); background: var(--bg3); }
 .hb.go2 { background: var(--amber); color: var(--cream-ink); border-color: var(--edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 var(--edge); }
 .hb.go2:hover { background: #f0dc9f; }
-.hb[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); background: rgba(232, 207, 138, 0.1); }
+.hb[aria-pressed="true"] { border-color: var(--edge); background: var(--amber); color: var(--cream-ink); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 0 var(--edge); }
 .hb.go2[aria-pressed="true"] { color: var(--cream-ink); }
 .hb.warn { color: var(--red); border-color: rgba(255, 143, 115, 0.4); }
 .hb:disabled { opacity: 0.35; cursor: default; }
@@ -89,7 +89,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 #sSub { color: var(--muted); margin: 0; }
 #sCue { font-size: 19px; font-weight: 700; line-height: 1.45; color: var(--amber); margin: 6px 0 0; letter-spacing: -0.02em; }
 #sCue:empty { display: none; }
-#sNote { margin: 4px 0 0; font-size: 15px; line-height: 1.75; color: #d6cfee; }
+#sNote { margin: 4px 0 0; font-size: 15px; line-height: 1.75; color: #d4d6de; }
 #sState.wait { color: var(--amber); }
 .slist { list-style: none; margin: 0; padding: 0; counter-reset: sc; }
 .slist button { width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 8px 0; cursor: pointer; display: grid; grid-template-columns: 34px 1fr; gap: 8px; color: var(--muted); }
@@ -109,7 +109,7 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .spot:hover { border-color: var(--line2); }
 .spot small { color: var(--muted); font-size: 11.5px; font-family: var(--mono); }
 .spot.below { opacity: 0.45; }
-.spot[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+.spot[aria-pressed="true"] { border-color: var(--edge); background: var(--amber); color: var(--cream-ink); }
 
 .hclock { font-size: 26px; font-weight: 700; }
 .off { opacity: 0.4; pointer-events: none; }
