@@ -22,7 +22,7 @@ var SHOWS = [
   {
     id: 'autumn',
     title: '가을 밤하늘, 에티오피아 왕가 이야기',
-    blurb: '별이 켜지는 하늘에서 시작해 왕비 카시오페이아와 영웅 페르세우스 이야기, 오늘의 주인공 토성까지. 8장면, 5분쯤 걸려요.',
+    blurb: '노을에서 별이 켜지는 순간부터 왕비 카시오페이아와 페르세우스 이야기, 안드로메다은하, 토성까지. 13장면, 진행자가 장면을 넘겨요.',
     scenes: [
       { view: { target: { altaz: [30, 248] }, fov: 100, minutes: 92 }, move: 0,
         fx: [{ type: 'timelapse', from: 0, to: 92, at: 0.5, dur: 16 }, { type: 'labels', from: 0, to: 1, at: 15, dur: 2 }],
@@ -30,6 +30,19 @@ var SHOWS = [
         title: '해가 지면, 별이 하나씩', sub: '오후 6시 → 7시 반, 16초 만에',
         cue: '가장 먼저 보이는 별을 찾으면 손을 들어 주세요',
         note: '오늘 해는 오후 5시 35분쯤 져요. 해 진 뒤 한 시간 반을 16초로 줄여서 보여 줄게요. 처음 보이는 밝은 별 두 개가 직녀성과 견우성이에요.' },
+
+      { view: { target: { altaz: [58, 175] }, fov: 108, minutes: 92 }, move: 5,
+        fx: [{ type: 'labels', from: 1, to: 0, at: 0, dur: 1.5 }, { type: 'lightsOut', from: 2.5, to: 6.3, at: 2, dur: 12 }],
+        title: '도시의 불을 모두 끈다면', sub: '보이는 별: 200개 → 4,000개',
+        cue: '맑은 날 우리 공원에서는 별이 몇 개쯤 보일까요?',
+        note: '도시 한가운데서는 별이 200개쯤 보이지만, 불빛 없는 산골에서는 맨눈으로 4천 개 넘게 보여요. 지금 화면이 그 산골 하늘이고, 가운데 뿌연 띠가 은하수예요.' },
+
+      { view: { target: { star: '북극성' }, fov: 96, minutes: 92 }, move: 6,
+        fx: [{ type: 'labels', from: 0, to: 1, at: 0, dur: 2 }, { type: 'trails', hours: 4, at: 3, dur: 8 },
+             { type: 'lines', cons: ['UMi', 'Cas'], at: 6, dur: 3 }, { type: 'pointer', from: '나비', to: '북극성', at: 10, dur: 2.5 }],
+        title: '움직이지 않는 별, 북극성', sub: '모든 별이 이 별을 중심으로 돌아요',
+        cue: '주먹을 쥐고 팔을 뻗어, 지평선에서 주먹 네 개 위를 보세요',
+        note: '지구가 돌기 때문에 별들은 밤새 북극성을 가운데 두고 원을 그려요. 이 줄무늬가 4시간 동안 별이 지나간 길이에요. 북극성은 지평선에서 주먹 네 개, 37도 높이에 있어요.' },
 
       { view: { target: { cons: 'Cas' }, fov: 80, minutes: 92 }, move: 5,
         fx: [{ type: 'lines', cons: ['Cas', 'Cep'], at: 2, dur: 3 }, { type: 'art', cons: ['Cas', 'Cep'], at: 4, dur: 2, stagger: 2.5 }],
@@ -65,13 +78,33 @@ var SHOWS = [
         cue: '대사각형 안에 별이 몇 개 보이는지 세어 보세요',
         note: '메두사가 쓰러질 때 날개 달린 말 페가수스가 태어났대요. 머리 위의 커다란 네모가 페가수스의 몸통, 가을의 대사각형이에요.' },
 
-      { view: { target: { body: 'Saturn' }, fov: 40, minutes: 92 }, move: 7,
+      { view: { target: { altaz: [52, 80] }, fov: 122, minutes: 92 }, move: 7,
+        fx: [{ type: 'lines', cons: ['Cas', 'Cep', 'Cet', 'And', 'Per', 'Peg'], at: 0, dur: 0.1 }],
+        keepArt: ['Cas', 'Cep', 'Cet', 'And', 'Per', 'Peg'],
+        title: '하늘에 남은 가족 사진', sub: '여섯 별자리가 한 이야기',
+        cue: '이야기 순서대로 손가락으로 따라가 볼까요?',
+        note: '한 걸음 물러서서 볼게요. 이야기에 나온 여섯 주인공이 모두 동쪽 하늘에 모여 있어요. 옛사람들은 이 이야기를 잊지 않으려고 하늘에 그려 넣었어요.' },
+
+      { view: { target: { dso: '안드로메다은하' }, fov: 34, minutes: 92 }, move: 7,
+        fx: [],
+        keepArt: ['And'],
+        title: '250만 년 전에 출발한 빛', sub: '안드로메다은하',
+        cue: '이 빛이 출발할 때 지구에는 누가 살았을까요?',
+        note: '공주의 허리께에 있는 희뿌연 얼룩이 별 1조 개가 모인 이웃 은하, 안드로메다은하예요. 지금 보는 빛은 250만 년 전에 출발했어요. 맨눈으로 볼 수 있는 가장 먼 천체예요.' },
+
+      { view: { target: { dso: '좀생이별 (플레이아데스)' }, fov: 62, minutes: 152 }, move: 8,
+        fx: [{ type: 'timelapse', from: 92, to: 152, at: 0, dur: 8 }, { type: 'lines', cons: ['Tau'], at: 8, dur: 3 }, { type: 'art', cons: ['Tau'], at: 10, dur: 2.5 }],
+        title: '좀생이별', sub: '밤 8시 반, 동쪽에서 떠오르는 황소',
+        cue: '좀생이별이 몇 개로 보이나요?',
+        note: '시간을 한 시간 앞으로 돌렸어요. 동쪽에서 떠오른 이 별 무리를 우리 조상들은 좀생이별이라 부르고, 달과의 거리를 보며 그해 농사를 점쳤어요. 아래쪽 붉은 별 알데바란은 황소의 눈이에요.' },
+
+      { view: { target: { body: 'Saturn' }, fov: 40, minutes: 152 }, move: 7,
         fx: [{ type: 'eyepiece', body: 'Saturn', at: 6, dur: 2 }],
         title: '오늘의 주인공, 토성', sub: '망원경으로 보면 이렇게 보여요',
         cue: '별과 행성은 어떻게 구별할까요?',
         note: '남동쪽에서 깜빡이지 않고 차분하게 빛나는 노란 점이 토성이에요. 지구에서 약 13억 km, 빛으로 70분 넘게 걸려요. 망원경으로 보면 이렇게 고리가 보여요.' },
 
-      { view: { target: { altaz: [84, 180] }, fov: 118, minutes: 92 }, move: 9,
+      { view: { target: { altaz: [84, 180] }, fov: 118, minutes: 152 }, move: 9,
         fx: [{ type: 'labels', from: 1, to: 0, at: 4, dur: 4 }],
         title: '오늘 밤에도 이 자리에', sub: '헤드셋을 천천히 벗어 주세요',
         cue: '헤드셋을 천천히 벗어 주세요',
