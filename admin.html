@@ -159,12 +159,23 @@ input[type=range] { width: 100%; accent-color: var(--amber); }
 .spot[aria-pressed="true"] small { color: rgba(36, 28, 11, 0.7); }
 input[type=text], input[type=number], select { height: 36px; padding: 0 12px; border-radius: 10px; background: #101115; border-color: rgba(255, 255, 255, 0.1); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); }
 .big { border-radius: 999px; padding: 6px 14px; background: linear-gradient(180deg, #f1dba0 0%, #e2c57d 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+
+/* the scene reads like a page of script: what to say, then what to ask. no box, no labels. */
+.scene { border: 0; background: none; border-radius: 0; padding: 4px 0 6px; gap: 10px; }
+.sprog { height: 2px; background: rgba(255, 255, 255, 0.07); border-radius: 2px; overflow: hidden; transition: opacity .4s; }
+.sprog.done { opacity: 0; }
+.sprog i { display: block; height: 100%; width: 0; background: var(--amber); }
+#sTitle { font-size: 24px; margin: 4px 0 0; }
+#sNote { margin: 0; font-size: 16.5px; line-height: 1.8; color: var(--ink); }
+#sCue { margin: 0; font-size: 16.5px; font-weight: 500; line-height: 1.7; color: var(--amber); }
+#sCue::before { content: "“"; } #sCue::after { content: "”"; }
+.hplab { margin-bottom: 8px; }
+.top { align-items: center; }
 </style>
 </head>
 <body>
 <div id="login">
   <form class="lbox" id="lform">
-    <span class="kicker">진행자 콘솔 / 2026.11.01</span>
     <h1>별이 빛나는 밤에</h1>
     <input type="password" id="lkey" placeholder="관리자 비밀번호" autocomplete="current-password" aria-label="관리자 비밀번호">
     <button class="hb go2 wide" type="submit">들어가기</button>
@@ -175,7 +186,6 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
 <div id="host">
   <header class="top">
     <div>
-      <span class="kicker">진행자 콘솔 / 2026.11.01 / 오송호수공원</span>
       <h1>별이 빛나는 밤에</h1>
     </div>
     <div class="stat">
@@ -189,7 +199,7 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
   <div class="grid">
     <div class="stage hview">
       <div class="bar spread">
-        <span class="label">진행자 하늘 · 끌어서 돌리기 · 휠로 확대</span>
+        <span></span>
         <div class="bar">
           <button class="hb sw" id="hFollow" type="button" aria-pressed="false">따라오게 하기</button>
           <button class="hb sw" id="hArt" type="button" aria-pressed="true">별자리 그림</button>
@@ -199,33 +209,31 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
       <div class="hframe"><iframe id="hSky" title="진행자 하늘 화면" allow="fullscreen"></iframe></div>
       <div id="hPrev" class="hprev">
         <div>
-          <div class="hplab"><span>VR 헤드셋 속 화면</span><small>끌면 고개를 돌린 것처럼</small></div>
+          <div class="hplab"><span>VR 헤드셋 속 화면</span></div>
           <div class="phone"><iframe id="pVR" title="VR 화면 미리보기"></iframe></div>
         </div>
         <div>
-          <div class="hplab"><span>화면으로 보기</span><small>참가자 폰과 같은 화면</small></div>
+          <div class="hplab"><span>화면으로 보기</span></div>
           <div class="phone"><iframe id="pSC" title="화면 모드 미리보기"></iframe></div>
         </div>
       </div>
-      <p class="hn" id="hFollowNote">‘따라오게 하기’를 켜면 화면으로 보는 폰은 이 하늘과 똑같이 움직이고, VR 폰에는 ‘진행자가 보는 곳’ 화살표가 떠요. 이야기를 진행하는 동안에는 이야기가 화면을 움직여요. 미리보기는 접속 수에 세지 않아요.</p>
+      <p id="hFollowNote" hidden></p>
     </div>
 
     <aside class="side">
       <section aria-labelledby="stH">
-        <div class="bar spread"><h2 id="stH">이야기</h2><span class="keys">→ 스페이스 다음 · ← 이전</span></div>
+        <div class="bar spread"><h2 id="stH">이야기</h2></div>
         <select id="sShow" aria-label="이야기 고르기"></select>
-        <p class="hn" id="sBlurb"></p>
         <div class="bar">
           <button class="hb" id="sPrev" type="button">이전</button>
           <button class="hb go2 wide" id="sGo" type="button">시작</button>
           <button class="hb warn" id="sEnd" type="button">끝내기</button>
         </div>
         <div class="scene">
-          <div class="num"><span id="sCount">— / —</span><span id="sState"></span></div>
-          <p id="sTitle">이야기를 고르고 시작을 누르세요</p>
-          <p id="sSub">시작하면 접속한 모든 폰이 같은 장면으로 넘어가요. 짧은 연출이 끝나면 멈춰서 기다려요.</p>
-          <p id="sCue"></p>
+          <div class="sprog"><i id="sProg"></i></div>
+          <p id="sTitle"></p>
           <p id="sNote"></p>
+          <p id="sCue"></p>
         </div>
         <ol class="slist" id="sList"></ol>
       </section>
@@ -235,7 +243,6 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
         <div class="qr">
           <canvas id="hQR" width="132" height="132" aria-label="폰 연결용 QR 코드"></canvas>
           <div>
-            <p class="hn">참가자는 이 QR을 찍어 들어와요.</p>
             <input type="text" id="hLink" readonly aria-label="폰 연결 링크">
             <div class="bar"><button class="hb" id="hCopy" type="button">링크 복사</button></div>
             <div class="bar"><input type="text" id="hRoom" maxlength="24" aria-label="방 이름" style="width:110px;font-family:var(--mono)"><button class="hb" id="hRoomSet" type="button">방 바꾸기</button></div>
@@ -273,7 +280,6 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
       <details>
         <summary>모두 같이 볼 곳</summary>
         <div>
-          <p class="hn">누르면 폰에 화살표가 뜨고, 위 하늘도 그쪽으로 돌아가요.</p>
           <div class="hspots" id="hSpots"></div>
           <div class="bar"><button class="hb" id="hSpotOff" type="button">가리키기 끄기</button></div>
         </div>
@@ -302,10 +308,8 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
             <button class="hb" type="button" data-hnote="헤드셋을 잠깐 벗어요">헤드셋을 잠깐 벗어요</button>
           </div>
           <div class="bar"><button class="hb warn sw" id="hHold" type="button" aria-pressed="false">화면 가리기 (쉬는 시간)</button></div>
-          <p class="hn">‘화면 가리기’를 누르면 모든 폰이 어두워지고 ‘헤드셋을 벗고 앞을 봐 주세요’가 떠요.</p>
         </div>
       </details>
-      <p class="hn" style="padding-top:16px">이 화면이 꺼져도 진행 중인 단계와 타이머는 서버가 이어서 진행해요.</p>
     </aside>
   </div>
 </div>
@@ -2964,7 +2968,6 @@ window.STORY_SHOWS = [
     lastServerShow = srv;
     if (cs && cs.show !== $('sShow').value) cs = null;
     show = cs ? showBy(cs.show) : showBy($('sShow').value);
-    $('sBlurb').textContent = show.blurb || '';
     var n = show.scenes.length, i = cs ? cs.i : -1;
     var list = $('sList');
     if (list.getAttribute('data-show') !== show.id) {
@@ -2980,25 +2983,21 @@ window.STORY_SHOWS = [
     list.querySelectorAll('button').forEach(function (b, j) { if (j === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
     if (cs) {
       var sc = show.scenes[i];
-      $('sCount').textContent = (i + 1) + ' / ' + n;
-      $('sTitle').textContent = sc.title || ''; $('sSub').textContent = sc.sub || '';
+      $('sTitle').textContent = (i + 1) + '. ' + (sc.title || '');
       $('sCue').textContent = sc.cue || ''; $('sNote').textContent = sc.note || '';
       $('sGo').textContent = i + 1 < n ? '다음 장면' : '마지막 장면'; $('sGo').disabled = i + 1 >= n;
       $('sPrev').disabled = i <= 0; $('sEnd').disabled = false;
     } else {
-      $('sCount').textContent = '— / ' + n;
-      $('sTitle').textContent = '시작을 누르면 이야기가 시작돼요';
-      $('sSub').textContent = '접속한 모든 폰이 같은 장면으로 넘어가요. 장면마다 짧은 연출이 끝나면 멈춰서 기다려요.';
-      $('sCue').textContent = ''; $('sNote').textContent = show.scenes[0].note || '';
+      $('sTitle').textContent = '1. ' + (show.scenes[0].title || '');
+      $('sCue').textContent = show.scenes[0].cue || ''; $('sNote').textContent = show.scenes[0].note || '';
       $('sGo').textContent = '시작'; $('sGo').disabled = false; $('sPrev').disabled = true; $('sEnd').disabled = true;
     }
   }
   function storyState() {
-    var cs = curStory(), el = $('sState');
-    if (!cs) { el.textContent = ''; el.className = ''; return; }
-    var sc = showBy(cs.show).scenes[cs.i], left = settleTime(sc) - (Date.now() - storyT0) / 1000;
-    if (left > 0) { el.textContent = '연출 중 · ' + Math.ceil(left) + '초'; el.className = ''; }
-    else { el.textContent = '이야기할 차례'; el.className = 'wait'; }
+    var cs = curStory(), bar = $('sProg'), box = bar.parentNode;
+    if (!cs) { box.className = 'sprog done'; bar.style.width = '0'; return; }
+    var sc = showBy(cs.show).scenes[cs.i], total = Math.max(0.1, settleTime(sc)), p = Math.min(1, (Date.now() - storyT0) / 1000 / total);
+    bar.style.width = (p * 100).toFixed(1) + '%'; box.className = p >= 1 ? 'sprog done' : 'sprog';
   }
   $('sShow').addEventListener('change', function () { renderStory(); });
   $('sGo').addEventListener('click', function () {
