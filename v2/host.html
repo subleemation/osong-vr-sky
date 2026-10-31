@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/app.css?v=7">
-<link rel="stylesheet" href="css/host.css?v=8">
+<link rel="stylesheet" href="css/host.css?v=9">
 </head>
 <body class="host">
 <div class="host-grid">
@@ -60,6 +60,11 @@
       <p class="intro-state" id="introState"></p>
     </section>
 
+    <section class="con-block cctv-block">
+      <div class="con-label"><span>참여자 화면 <b id="cctvCount" class="mono">0대</b></span><button type="button" class="btn-line" id="cctvBig">크게 보기</button></div>
+      <div id="cctvHome"><div class="cctv-grid" id="cctvGrid"><p class="cctv-empty" id="cctvEmpty">휴대폰이 들어오면 여기에 화면이 떠요.</p></div></div>
+    </section>
+
     <section class="con-block">
       <div class="con-label"><span>쇼</span><select id="showSel" aria-label="쇼 선택"></select></div>
       <div class="transport">
@@ -89,6 +94,11 @@
   </aside>
 </div>
 
+<div id="cctvWall" hidden role="dialog" aria-label="참여자 화면 모아 보기">
+  <div class="cctv-wall-head"><b>참여자 화면</b><span id="cctvWallCount" class="mono"></span><button type="button" class="btn-line" id="cctvClose">닫기 (Esc)</button></div>
+  <div class="cctv-wall-body" id="cctvWallBody"></div>
+</div>
+
 <div id="qrBig" hidden role="dialog" aria-label="접속 QR 코드">
   <div class="qrbig-inner">
     <div class="qrbig-code" id="qrBigCode"></div>
@@ -112,5 +122,6 @@
 <script src="js/shows.js?v=9"></script>
 <script src="js/sync.js?v=8"></script>
 <script src="js/host.js?v=8"></script>
+<script src="js/cctv.js?v=1"></script>
 </body>
 </html>
