@@ -88,6 +88,28 @@ export class Room {
     let m; try { m = JSON.parse(raw); } catch (e) { return; }
     if (!m || typeof m.k !== 'string') return;
     const att = ws.deserializeAttachment() || { role: 'phone', mode: 'menu' };
+    // ---- participant screens for the presenter (v2 "CCTV"): phones send small JPEG frames, only the room's watcher gets them ----
+    if (m.k === 'watch') {
+      const now = Date.now(); let wk = await this.ctx.storage.get('wk');
+      if (!wk || now - wk.at > 24 * 3600 * 1000 || (typeof m.key === 'string' && safeEq(m.key, wk.key))) {
+        if (!wk || !(typeof m.key === 'string' && safeEq(m.key, wk.key))) { wk = { key: crypto.randomUUID().replace(/-/g, ''), at: now }; }
+        else wk.at = now;
+        await this.ctx.storage.put('wk', wk);
+        att.role = 'watch'; ws.serializeAttachment(att);
+        ws.send(JSON.stringify({ k: 'watchok', key: wk.key }));
+      } else ws.send(JSON.stringify({ k: 'watchdeny' }));
+      return;
+    }
+    if (m.k === 'cam') {
+      const now = Date.now();
+      if (att.role !== 'phone' || typeof m.img !== 'string' || m.img.length > 60000 || m.img.slice(0, 23) !== 'data:image/jpeg;base64,') return;
+      if (att.camAt && now - att.camAt < 700) return;
+      att.camAt = now; att.cid = att.cid || String(m.id || '').replace(/[^a-z0-9]/gi, '').slice(0, 12) || Math.random().toString(36).slice(2, 8);
+      ws.serializeAttachment(att);
+      const out = JSON.stringify({ k: 'cam', id: att.cid, img: m.img, m: String(m.m || '').slice(0, 8), d: String(m.d || '').slice(0, 24), s: String(m.s || '').slice(0, 12), t: now });
+      for (const w of this.ctx.getWebSockets()) { const a = w.deserializeAttachment() || {}; if (a.role === 'watch') { try { w.send(out); } catch (e) {} } }
+      return;
+    }
     if (m.k === 'hi') {
       att.mode = ['vr', 'screen', 'host', 'sim'].includes(m.m) ? m.m : 'menu';
       att.vid = ['ready', 'load', 'fail', 'none'].includes(m.v) ? m.v : 'none';
@@ -194,6 +216,10 @@ export class Room {
     }
   }
 
-  async webSocketClose(ws) { try { ws.close(); } catch (e) {} this.pushCounts(); }
+  async webSocketClose(ws) {
+    const a = ws.deserializeAttachment() || {};
+    if (a.cid) { const gone = JSON.stringify({ k: 'camgone', id: a.cid }); for (const w of this.ctx.getWebSockets()) { if (w === ws) continue; const b = w.deserializeAttachment() || {}; if (b.role === 'watch') { try { w.send(gone); } catch (e) {} } } }
+    try { ws.close(); } catch (e) {} this.pushCounts();
+  }
   async webSocketError() { this.pushCounts(); }
 }
