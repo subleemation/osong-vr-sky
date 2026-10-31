@@ -282,6 +282,7 @@
     setLive('connecting');
     guest = ShowSync.guest(room, { status: setLive });
     // opening film (js/intro.js): the presenter's 체험 시작 plays it on every phone, then the sky fades in
+    if (window.PhoneCam) PhoneCam.start(room);   // small snapshots of this screen for the presenter's wall (js/phonecam.js)
     if (window.VRIntro) VRIntro.attach({ guest: guest, mode: function () { return st.mode; }, sep: function () { return baseSep() + st.ipdAdj; }, onDone: function () { st.vrT = performance.now(); } });
   }
 
@@ -367,6 +368,11 @@
       }
     }
     var fr2 = eng.render(o);
+    if (window.PhoneCam) {
+      var fa3 = altAz(st.cam.f), ist = window.VRIntro ? VRIntro.state().state : '';
+      PhoneCam.frame(st.mode, DIRS[Math.round(((fa3.az % 360) + 360) % 360 / 45) % 8] + ' ' + Math.round(fa3.alt) + '°',
+        ist !== 'ACTIVE' && ist ? (ist === 'IDLE' ? '대기' : '오프닝') : ev ? '쇼 ' + (ev.index + 1) + '장면' : '');
+    }
 
     if (st.mode === 'screen') {
       updateCard(ev ? null : sel);
