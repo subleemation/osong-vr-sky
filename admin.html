@@ -6,231 +6,269 @@
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
 <title>진행자 화면 · 별이 빛나는 밤에</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#070b1c">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<meta name="theme-color" content="#08090c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one scrolling control sheet over a live sky; the sky canvas takes the whole screen once a view starts. */
+/* Host console: sky on the left, a quiet control column on the right. Dark, square, cream accents. */
 :root {
-  --night: #060914;
-  --deep: #0d1430;
-  --panel: rgba(16, 24, 54, 0.86);
-  --line: rgba(160, 180, 255, 0.18);
-  --ink: #eef1ff;
-  --muted: #a9b3d8;
-  --star: #ffd77a;
-  --star-ink: #2a1d00;
-  --dusk: #ff9a6b;
-  --font-display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
-  --font-body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --bg: #08090c; --bg2: #0e1015; --bg3: #14161c;
+  --line: rgba(236, 228, 214, 0.12); --line2: rgba(236, 228, 214, 0.24);
+  --ink: #ece6da; --muted: #8f8a80; --faint: #5f5b55;
+  --cream: #ece4d6; --cream-ink: #15130f; --amber: #d9a65a; --red: #d0775c; --ok: #93bf8f;
+  --serif: "Gowun Batang", "Nanum Myeongjo", "AppleMyungjo", serif;
+  --sans: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   color-scheme: dark;
 }
 html, body { height: 100%; }
-body {
-  background: var(--night);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: 16px;
-  overflow: hidden;
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
-}
-#sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; overflow: auto; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
-#menu {
-  position: fixed; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  background: linear-gradient(180deg, rgba(6, 9, 20, 0.35) 0%, rgba(6, 9, 20, 0.82) 38%, var(--night) 70%);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: calc(20px + env(safe-area-inset-top, 0px)) calc(28px + env(safe-area-inset-bottom, 0px));
-}
-.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-header { display: flex; flex-direction: column; gap: 6px; padding-top: 18vh; }
-.eyebrow { font-size: 13px; letter-spacing: 0.08em; color: var(--star); }
-h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 9vw, 48px); line-height: 1.1; text-wrap: balance; }
-.sub { margin: 0; color: var(--muted); line-height: 1.6; }
+#host { min-height: 100%; display: flex; flex-direction: column; }
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 28px; flex-wrap: wrap; padding: 18px 24px 14px; border-bottom: 1px solid var(--line); }
+.kicker { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); }
+.top h1 { margin: 2px 0 0; font-family: var(--serif); font-weight: 700; font-size: 28px; letter-spacing: -0.01em; }
+.stat { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.stat .ok::before, .stat .bad::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--ok); }
+.stat .bad::before { background: var(--red); }
+.stat .ok { color: var(--ink); }
+#hPeers { font-family: var(--mono); color: var(--ink); }
+.big { font-family: var(--mono); font-size: 15px; color: var(--ink); border: 1px solid var(--line2); padding: 5px 10px; }
 
-.go { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.btn {
-  appearance: none; border: 1px solid var(--line); border-radius: 14px; cursor: pointer;
-  font-family: var(--font-display); font-size: 20px; padding: 16px 12px; color: var(--ink);
-  background: var(--deep); display: flex; flex-direction: column; align-items: center; gap: 4px;
-}
-.btn small { font-family: var(--font-body); font-size: 13px; color: var(--muted); }
-.btn.primary { background: var(--star); color: var(--star-ink); border-color: transparent; }
-.btn.primary small { color: rgba(42, 29, 0, 0.72); }
-.btn:focus-visible, .chip:focus-visible, input:focus-visible { outline: 3px solid var(--star); outline-offset: 2px; }
+.grid { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 430px; min-height: 0; }
+.stage { padding: 18px 24px 24px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.side { border-left: 1px solid var(--line); padding: 0 22px 40px; overflow-y: auto; }
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); } }
 
-.notice { margin: 0; padding: 12px 14px; border-radius: 12px; background: rgba(255, 154, 107, 0.14); border: 1px solid rgba(255, 154, 107, 0.4); line-height: 1.55; font-size: 14px; }
-
-section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-section.card h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 19px; }
-.row { display: flex; flex-direction: column; gap: 8px; }
-.row > label, .lab { font-size: 14px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
-.row > label b, .lab b { color: var(--ink); font-weight: 400; font-family: var(--font-display); font-size: 16px; }
-.clock { font-family: var(--font-display); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
-.skystate { font-size: 14px; color: var(--dusk); line-height: 1.5; }
-input[type=range] { width: 100%; accent-color: var(--star); height: 28px; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip {
-  appearance: none; cursor: pointer; border-radius: 999px; padding: 9px 14px; font-size: 15px;
-  font-family: var(--font-body); border: 1px solid var(--line); background: transparent; color: var(--ink);
-}
-.chip[aria-pressed="true"] { background: var(--star); color: var(--star-ink); border-color: transparent; }
-.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; line-height: 1.55; }
-.foot { color: var(--muted); font-size: 12px; line-height: 1.6; text-align: center; }
-
-/* host console (laptop) */
-#host { position: fixed; inset: 0; z-index: 30; overflow-y: auto; background: #070b1c; color: var(--ink); padding: 18px clamp(14px, 3vw, 36px) 40px; }
-#host * { box-sizing: border-box; }
-.hwrap { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-.htop { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
-.htop h1 { font-size: 28px; flex: 1 1 auto; margin: 0; }
-.hstat { font-size: 14px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
-.hstat .ok { color: #8fe0a8; } .hstat .bad { color: var(--dusk); }
-.hbig { font-family: var(--font-display); font-size: clamp(34px, 7vw, 72px); line-height: 1.1; color: var(--star); font-variant-numeric: tabular-nums; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 24px; }
-.hgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
-.hcard { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.hcard h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 20px; }
-.hcard p.hn { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.55; }
-.hrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.hb { appearance: none; cursor: pointer; border-radius: 12px; border: 1px solid var(--line); background: var(--deep); color: var(--ink); font-family: var(--font-display); font-size: 17px; padding: 11px 16px; }
-.hb[aria-pressed="true"] { background: var(--star); color: var(--star-ink); border-color: transparent; }
-.hb.go2 { background: var(--star); color: var(--star-ink); border-color: transparent; }
-.hb.warn { border-color: rgba(255, 154, 107, 0.6); color: var(--dusk); }
-.hb:disabled { opacity: 0.4; cursor: default; }
-.hb:focus-visible, #host input:focus-visible { outline: 3px solid var(--star); outline-offset: 2px; }
-#host input[type=text], #host input[type=number] { background: var(--deep); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-family: var(--font-body); font-size: 16px; }
-#host input[type=number] { width: 84px; }
-#hLink { flex: 1 1 220px; min-width: 0; }
-#hQR { width: 180px; height: 180px; border-radius: 10px; background: #fff; image-rendering: pixelated; }
-.hspots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.spot { appearance: none; cursor: pointer; text-align: left; border-radius: 12px; border: 1px solid var(--line); background: var(--deep); color: var(--ink); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; font-family: var(--font-display); font-size: 17px; }
-.spot small { font-family: var(--font-body); font-size: 13px; color: var(--muted); }
-.spot.below { opacity: 0.5; }
-.spot[aria-pressed="true"] { background: var(--star); color: var(--star-ink); border-color: transparent; }
-.spot[aria-pressed="true"] small { color: rgba(42, 29, 0, 0.75); }
-.off { opacity: 0.45; pointer-events: none; }
-.hclock { font-family: var(--font-display); font-size: 30px; font-variant-numeric: tabular-nums; }
-
-.hframe { position: relative; width: 100%; aspect-ratio: 16 / 8; max-height: 62vh; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #000; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bar.spread { justify-content: space-between; }
+.label { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.hframe { position: relative; width: 100%; aspect-ratio: 16 / 8.2; max-height: 60vh; background: #000; border: 1px solid var(--line); }
 .hframe iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-.hview.live .hframe { outline: 3px solid var(--star); outline-offset: 2px; }
-a.hb { text-decoration: none; display: inline-flex; align-items: center; }
-.hprev { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
-.hplab { font-family: var(--font-display); font-size: 17px; margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
-.hplab small { font-family: var(--font-body); font-size: 13px; color: var(--muted); }
-.phone { width: 100%; aspect-ratio: 844 / 390; border-radius: 20px; padding: 9px; background: #1a1f33; box-shadow: inset 0 0 0 2px #2b3352; }
-.phone iframe { width: 100%; height: 100%; border: 0; border-radius: 12px; background: #000; display: block; }
-#login { position: fixed; inset: 0; z-index: 40; background: #070b1c; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.lbox { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 12px; }
-.lbox h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; }
-.lbox input { background: var(--deep); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 18px; font-family: var(--font-body); }
-.lerr { color: var(--dusk); min-height: 1.4em; font-size: 15px; }
-body { overflow: auto; }
+.hview.live .hframe { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber); }
+.hprev { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .hprev { grid-template-columns: 1fr; } }
+.hplab { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+.hplab small { color: var(--faint); font-size: 12px; }
+.phone { width: 100%; aspect-ratio: 844 / 390; background: #000; border: 1px solid var(--line); }
+.phone iframe { width: 100%; height: 100%; border: 0; display: block; }
+.hn { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* buttons: outlined by default, cream when it is the main action, amber edge when it is on */
+.hb { appearance: none; cursor: pointer; background: transparent; border: 1px solid var(--line2); color: var(--ink); padding: 8px 13px; font-size: 14px; border-radius: 0; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.hb:hover { border-color: var(--ink); }
+.hb.go2 { background: var(--cream); color: var(--cream-ink); border-color: var(--cream); }
+.hb.go2:hover { background: #fff8ec; }
+.hb[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+.hb.go2[aria-pressed="true"] { color: var(--cream-ink); }
+.hb.warn { color: var(--red); border-color: rgba(208, 119, 92, 0.5); }
+.hb:disabled { opacity: 0.35; cursor: default; }
+.hb.wide { flex: 1; justify-content: center; padding: 11px 13px; font-size: 15px; }
+
+input[type=text], input[type=number], select { background: var(--bg2); border: 1px solid var(--line2); border-radius: 0; padding: 8px 10px; }
+input[type=number] { width: 70px; font-family: var(--mono); }
+select { padding-right: 28px; max-width: 100%; }
+input[type=range] { width: 100%; accent-color: var(--cream); }
+
+.side section { padding: 18px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.side h2 { margin: 0; font-family: var(--serif); font-weight: 700; font-size: 18px; }
+.side details { border-bottom: 1px solid var(--line); }
+.side summary { cursor: pointer; list-style: none; padding: 15px 0; display: flex; justify-content: space-between; align-items: baseline; font-family: var(--serif); font-weight: 700; font-size: 16px; }
+.side summary::-webkit-details-marker { display: none; }
+.side summary::after { content: "+"; font-family: var(--mono); color: var(--muted); font-weight: 400; }
+.side details[open] summary::after { content: "−"; }
+.side details > div { padding: 0 0 18px; display: flex; flex-direction: column; gap: 10px; }
+
+/* story */
+.scene { border: 1px solid var(--line); background: var(--bg2); padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+.scene .num { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+#sTitle { font-family: var(--serif); font-weight: 700; font-size: 22px; line-height: 1.3; margin: 0; }
+#sSub { color: var(--muted); margin: 0; }
+#sCue { font-family: var(--serif); font-size: 19px; line-height: 1.45; color: var(--amber); margin: 6px 0 0; }
+#sCue:empty { display: none; }
+#sNote { margin: 4px 0 0; font-size: 15px; line-height: 1.75; color: #d9d2c5; }
+#sState.wait { color: var(--amber); }
+.slist { list-style: none; margin: 0; padding: 0; counter-reset: sc; }
+.slist button { width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 8px 0; cursor: pointer; display: grid; grid-template-columns: 34px 1fr; gap: 8px; color: var(--muted); }
+.slist button:hover { color: var(--ink); }
+.slist button[aria-current="step"] { color: var(--cream); }
+.slist button[aria-current="step"] .n { color: var(--amber); }
+.slist .n { font-family: var(--mono); font-size: 12px; padding-top: 2px; }
+.keys { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+
+/* the rest */
+#hQR { width: 132px; height: 132px; image-rendering: pixelated; background: #fff; flex: none; }
+.qr { display: flex; gap: 14px; align-items: flex-start; }
+.qr > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+#hLink { width: 100%; min-width: 0; font-family: var(--mono); font-size: 12px; }
+.hspots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.spot { appearance: none; cursor: pointer; text-align: left; background: transparent; border: 1px solid var(--line); padding: 7px 9px; display: flex; flex-direction: column; gap: 1px; }
+.spot:hover { border-color: var(--line2); }
+.spot small { color: var(--muted); font-size: 11.5px; font-family: var(--mono); }
+.spot.below { opacity: 0.45; }
+.spot[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+#hBig { font-family: var(--mono); font-size: 22px; color: var(--ink); }
+.hclock { font-family: var(--mono); font-size: 26px; }
+.off { opacity: 0.4; pointer-events: none; }
+
+#login { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.lbox { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 12px; }
+.lbox h1 { margin: 0 0 6px; font-family: var(--serif); font-weight: 700; font-size: 26px; }
+.lbox input { padding: 11px 12px; font-size: 16px; }
+.lerr { color: var(--red); min-height: 1.4em; font-size: 14px; }
 </style>
 </head>
 <body>
 <div id="login">
   <form class="lbox" id="lform">
-    <h1>진행자 로그인</h1>
+    <span class="kicker">진행자 콘솔 / 2026.11.01</span>
+    <h1>별이 빛나는 밤에</h1>
     <input type="password" id="lkey" placeholder="관리자 비밀번호" autocomplete="current-password" aria-label="관리자 비밀번호">
-    <button class="hb go2" type="submit">들어가기</button>
+    <button class="hb go2 wide" type="submit">들어가기</button>
     <div class="lerr" id="lerr" role="status"></div>
   </form>
 </div>
+
 <div id="host">
- <div class="hwrap">
-  <div class="htop">
-    <h1>진행자 화면 · 별이 빛나는 밤에</h1>
-    <div class="hstat"><span id="hConn" class="bad">연결 중…</span><span id="hStatus"></span><span id="hPeers">0대 접속</span></div>
-    
-  </div>
-  <div class="hbig" id="hBig" aria-live="polite">대기 중</div>
-  <div class="hgrid">
-    <section class="hcard hview" style="grid-column: 1 / -1">
-      <div class="hrow" style="justify-content:space-between">
-        <h2>내 화면으로 하늘 돌리기</h2>
-        <div class="hrow">
-          <button class="hb go2" id="hFollow" type="button" aria-pressed="false">참가자 화면 따라오게 하기 · 꺼짐</button>
+  <header class="top">
+    <div>
+      <span class="kicker">진행자 콘솔 / 2026.11.01 / 오송호수공원</span>
+      <h1>별이 빛나는 밤에</h1>
+    </div>
+    <div class="stat">
+      <span id="hConn" class="bad">연결 중…</span>
+      <span id="hPeers">0대 접속</span>
+      <span id="hStatus"></span>
+      <span class="big" id="hBig" aria-live="polite">대기 중</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="stage hview">
+      <div class="bar spread">
+        <span class="label">진행자 하늘 · 끌어서 돌리기 · 휠로 확대</span>
+        <div class="bar">
+          <button class="hb" id="hFollow" type="button" aria-pressed="false">따라오게 하기 · 꺼짐</button>
           <button class="hb" id="hArt" type="button" aria-pressed="true">별자리 그림 · 켜짐</button>
-          <button class="hb" id="hPrevToggle" type="button" aria-pressed="true" aria-controls="hPrev">참가자 화면 미리보기 · 보이기</button>
+          <button class="hb" id="hPrevToggle" type="button" aria-pressed="true" aria-controls="hPrev">미리보기 · 숨기기</button>
         </div>
       </div>
       <div class="hframe"><iframe id="hSky" title="진행자 하늘 화면" allow="fullscreen"></iframe></div>
       <div id="hPrev" class="hprev">
         <div>
-          <div class="hplab">VR 헤드셋 속 화면 <small>마우스로 끌면 고개를 돌린 것처럼 움직여요 · 아래로 끌면 설정판</small></div>
+          <div class="hplab"><span>VR 헤드셋 속 화면</span><small>끌면 고개를 돌린 것처럼</small></div>
           <div class="phone"><iframe id="pVR" title="VR 화면 미리보기"></iframe></div>
         </div>
         <div>
-          <div class="hplab">화면으로 보기 <small>따라오게 하기를 켜면 위 화면과 똑같이 움직여요</small></div>
+          <div class="hplab"><span>화면으로 보기</span><small>참가자 폰과 같은 화면</small></div>
           <div class="phone"><iframe id="pSC" title="화면 모드 미리보기"></iframe></div>
         </div>
       </div>
-      <p class="hn" id="hFollowNote">마우스로 끌어서 돌리고, 휠로 확대해요. ‘따라오게 하기’를 켜면 <b>화면으로 보기</b> 폰은 이 화면과 똑같이 움직이고, <b>VR</b> 폰에는 ‘진행자가 보는 곳’ 화살표가 떠요. VR을 억지로 돌리면 어지러워서 화살표로 안내해요. 아래 ‘모두 같이 볼 곳’을 누르면 이 화면도 그쪽으로 돌아가요. 미리보기 두 칸은 참가자 폰과 똑같은 화면이고, 접속 수에는 세지 않아요. 노트북이 느려지면 ‘미리보기 · 숨기기’로 꺼 두세요.</p>
-    </section>
-    <section class="hcard">
-      <h2>1. 폰 연결하기</h2>
-      <p class="hn">폰에서 이 QR을 찍거나 링크를 열면 이 화면과 연결돼요. 연결된 폰은 VR을 시작하면 자동으로 따라와요.</p>
-      <div class="hrow"><canvas id="hQR" width="180" height="180" aria-label="폰 연결용 QR 코드"></canvas></div>
-      <div class="hrow"><input type="text" id="hLink" readonly aria-label="폰 연결 링크"><button class="hb" id="hCopy" type="button">복사</button></div>
-      <div class="hrow"><input type="text" id="hRoom" maxlength="24" aria-label="방 이름"><button class="hb" id="hRoomSet" type="button">방 이름 바꾸기</button></div>
-    </section>
-    <section class="hcard">
-      <h2>2. 진행 순서</h2>
-      <div class="hrow">
-        <button class="hb" id="hOrderGF" type="button" aria-pressed="true">① 설명 먼저 → 자유 관찰</button>
-        <button class="hb" id="hOrderFG" type="button" aria-pressed="false">② 자유 관찰 먼저 → 설명</button>
-      </div>
-      <div class="hrow"><label>설명 <input type="number" id="hGMin" min="1" max="60" value="10"> 분</label><label>자유 관찰 <input type="number" id="hFMin" min="1" max="60" value="10"> 분</label></div>
-      <div class="hrow"><button class="hb go2" id="hPlanStart" type="button">시작하기</button></div>
-      <div class="hrow" id="hPlanRun" hidden>
-        <button class="hb go2" id="hNext" type="button">다음 단계로</button>
-        <button class="hb" id="hPause" type="button">일시정지</button>
-        <button class="hb warn" id="hStop" type="button">끝내기</button>
-      </div>
-      <p class="hn" id="hPlanInfo"></p>
-      <div class="hrow"><span class="hn">직접 바꾸기:</span><button class="hb" id="hPhaseG" type="button" aria-pressed="false">설명 시간</button><button class="hb" id="hPhaseF" type="button" aria-pressed="false">자유 관찰</button></div>
-    </section>
-    <section class="hcard" style="grid-column: 1 / -1">
-      <h2>3. 모두 같이 볼 곳 (설명 시간에 폰에 화살표가 나와요)</h2>
-      <div class="hspots" id="hSpots"></div>
-      <div class="hrow"><button class="hb" id="hSpotOff" type="button">가리키기 끄기</button></div>
-    </section>
-    <section class="hcard">
-      <h2>4. 하늘 시각</h2>
-      <div class="hclock" id="hClock">오후 7:30</div>
-      <input type="range" id="hTime" min="30" max="180" step="5" value="90" aria-label="하늘 시각">
-      <div class="hrow" id="hSpeed">
-        <button class="hb" type="button" data-hspeed="0" aria-pressed="true">멈춤</button>
-        <button class="hb" type="button" data-hspeed="1" aria-pressed="false">실제 속도</button>
-        <button class="hb" type="button" data-hspeed="60" aria-pressed="false">빠르게</button>
-      </div>
-    </section>
-    <section class="hcard" id="hManualTimers">
-      <h2>5. 타이머 (순서를 안 쓸 때)</h2>
-      <div class="hrow">
-        <button class="hb" type="button" data-htimer="1">1분</button><button class="hb" type="button" data-htimer="3">3분</button>
-        <button class="hb" type="button" data-htimer="5">5분</button><button class="hb" type="button" data-htimer="10">10분</button>
-      </div>
-      <div class="hrow"><input type="number" id="hTimerMin" min="1" max="90" value="7"> 분 <input type="text" id="hTimerLabel" placeholder="이름 (예: 망원경)" maxlength="12"><button class="hb" id="hTimerCustom" type="button">시작</button><button class="hb warn" id="hTimerOff" type="button">끄기</button></div>
-    </section>
-    <section class="hcard">
-      <h2>6. 메시지 · 쉬는 시간</h2>
-      <div class="hrow"><input type="text" id="hNote" maxlength="40" placeholder="폰 화면 위에 띄울 말" style="flex:1 1 200px"><button class="hb go2" id="hSend" type="button">보내기</button><button class="hb" id="hNoteClear" type="button">지우기</button></div>
-      <div class="hrow">
-        <button class="hb" type="button" data-hnote="이쪽을 봐 주세요">이쪽을 봐 주세요</button>
-        <button class="hb" type="button" data-hnote="질문 있나요?">질문 있나요?</button>
-        <button class="hb" type="button" data-hnote="망원경 보러 가요">망원경 보러 가요</button>
-      </div>
-      <div class="hrow"><button class="hb warn" id="hHold" type="button" aria-pressed="false">화면 가리기 (쉬는 시간)</button></div>
-      <p class="hn">‘화면 가리기’를 누르면 모든 폰이 어두워지고 ‘헤드셋을 벗어 주세요’가 떠요.</p>
-    </section>
-  </div>
-  <p class="hn" style="text-align:center;color:var(--muted);font-size:13px">이 노트북 화면을 켜 두세요. 꺼지거나 닫히면 폰은 각자 알아서 계속 볼 수 있어요.</p>
- </div>
-</div>
+      <p class="hn" id="hFollowNote">‘따라오게 하기’를 켜면 화면으로 보는 폰은 이 하늘과 똑같이 움직이고, VR 폰에는 ‘진행자가 보는 곳’ 화살표가 떠요. 이야기를 진행하는 동안에는 이야기가 화면을 움직여요. 미리보기는 접속 수에 세지 않아요.</p>
+    </div>
 
+    <aside class="side">
+      <section aria-labelledby="stH">
+        <div class="bar spread"><h2 id="stH">이야기</h2><span class="keys">→ 스페이스 다음 · ← 이전</span></div>
+        <select id="sShow" aria-label="이야기 고르기"></select>
+        <p class="hn" id="sBlurb"></p>
+        <div class="bar">
+          <button class="hb" id="sPrev" type="button">이전</button>
+          <button class="hb go2 wide" id="sGo" type="button">시작</button>
+          <button class="hb warn" id="sEnd" type="button">끝내기</button>
+        </div>
+        <div class="scene">
+          <div class="num"><span id="sCount">— / —</span><span id="sState"></span></div>
+          <p id="sTitle">이야기를 고르고 시작을 누르세요</p>
+          <p id="sSub">시작하면 접속한 모든 폰이 같은 장면으로 넘어가요. 짧은 연출이 끝나면 멈춰서 기다려요.</p>
+          <p id="sCue"></p>
+          <p id="sNote"></p>
+        </div>
+        <ol class="slist" id="sList"></ol>
+      </section>
+
+      <section aria-labelledby="cnH">
+        <h2 id="cnH">폰 연결</h2>
+        <div class="qr">
+          <canvas id="hQR" width="132" height="132" aria-label="폰 연결용 QR 코드"></canvas>
+          <div>
+            <p class="hn">참가자는 이 QR을 찍어 들어와요.</p>
+            <input type="text" id="hLink" readonly aria-label="폰 연결 링크">
+            <div class="bar"><button class="hb" id="hCopy" type="button">링크 복사</button></div>
+            <div class="bar"><input type="text" id="hRoom" maxlength="24" aria-label="방 이름" style="width:110px;font-family:var(--mono)"><button class="hb" id="hRoomSet" type="button">방 바꾸기</button></div>
+          </div>
+        </div>
+      </section>
+
+      <details>
+        <summary>진행 순서 · 타이머</summary>
+        <div>
+          <div class="bar">
+            <button class="hb" id="hOrderGF" type="button" aria-pressed="true">① 설명 → 자유 관찰</button>
+            <button class="hb" id="hOrderFG" type="button" aria-pressed="false">② 자유 관찰 → 설명</button>
+          </div>
+          <div class="bar"><label>설명 <input type="number" id="hGMin" min="1" max="60" value="10"> 분</label><label>자유 <input type="number" id="hFMin" min="1" max="60" value="10"> 분</label></div>
+          <div class="bar"><button class="hb go2" id="hPlanStart" type="button">순서대로 시작</button></div>
+          <div class="bar" id="hPlanRun" hidden>
+            <button class="hb go2" id="hNext" type="button">다음 단계</button>
+            <button class="hb" id="hPause" type="button">일시정지</button>
+            <button class="hb warn" id="hStop" type="button">끝내기</button>
+          </div>
+          <p class="hn" id="hPlanInfo"></p>
+          <div class="bar"><span class="hn">직접 바꾸기</span><button class="hb" id="hPhaseG" type="button" aria-pressed="false">설명 시간</button><button class="hb" id="hPhaseF" type="button" aria-pressed="false">자유 관찰</button></div>
+          <div id="hManualTimers" style="display:flex;flex-direction:column;gap:8px">
+            <span class="label">따로 쓰는 타이머</span>
+            <div class="bar">
+              <button class="hb" type="button" data-htimer="1">1분</button><button class="hb" type="button" data-htimer="3">3분</button>
+              <button class="hb" type="button" data-htimer="5">5분</button><button class="hb" type="button" data-htimer="10">10분</button>
+            </div>
+            <div class="bar"><input type="number" id="hTimerMin" min="1" max="90" value="7"> 분 <input type="text" id="hTimerLabel" placeholder="이름" maxlength="12" style="width:90px"><button class="hb" id="hTimerCustom" type="button">시작</button><button class="hb warn" id="hTimerOff" type="button">끄기</button></div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>모두 같이 볼 곳</summary>
+        <div>
+          <p class="hn">누르면 폰에 화살표가 뜨고, 위 하늘도 그쪽으로 돌아가요.</p>
+          <div class="hspots" id="hSpots"></div>
+          <div class="bar"><button class="hb" id="hSpotOff" type="button">가리키기 끄기</button></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>하늘 시각</summary>
+        <div>
+          <div class="hclock" id="hClock">오후 7:30</div>
+          <input type="range" id="hTime" min="30" max="180" step="5" value="90" aria-label="하늘 시각">
+          <div class="bar" id="hSpeed">
+            <button class="hb" type="button" data-hspeed="0" aria-pressed="true">멈춤</button>
+            <button class="hb" type="button" data-hspeed="1" aria-pressed="false">실제 속도</button>
+            <button class="hb" type="button" data-hspeed="60" aria-pressed="false">빠르게</button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>메시지 · 쉬는 시간</summary>
+        <div>
+          <div class="bar"><input type="text" id="hNote" maxlength="40" placeholder="폰 화면에 띄울 말" style="flex:1 1 160px"><button class="hb go2" id="hSend" type="button">보내기</button><button class="hb" id="hNoteClear" type="button">지우기</button></div>
+          <div class="bar">
+            <button class="hb" type="button" data-hnote="이쪽을 봐 주세요">이쪽을 봐 주세요</button>
+            <button class="hb" type="button" data-hnote="질문 있나요?">질문 있나요?</button>
+            <button class="hb" type="button" data-hnote="헤드셋을 잠깐 벗어요">헤드셋을 잠깐 벗어요</button>
+          </div>
+          <div class="bar"><button class="hb warn" id="hHold" type="button" aria-pressed="false">화면 가리기 (쉬는 시간)</button></div>
+          <p class="hn">‘화면 가리기’를 누르면 모든 폰이 어두워지고 ‘헤드셋을 벗고 앞을 봐 주세요’가 떠요.</p>
+        </div>
+      </details>
+      <p class="hn" style="padding-top:16px">이 화면이 꺼져도 진행 중인 단계와 타이머는 서버가 이어서 진행해요.</p>
+    </aside>
+  </div>
+</div>
 
 <script>//---------------------------------------------------------------------
 //
@@ -2587,6 +2625,123 @@ var SkyCore = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = SkyCore;
 </script>
+<script>// 이야기(쇼) 장면 — 진행자가 다음 장면으로 넘기면 모든 휴대폰이 같은 장면을 봐요.
+// 장면 형식은 leedohyang15의 Osong-vr 쇼 방식을 따랐어요(view / move / fx / keepArt / title·sub·cue·note).
+//   view    장면이 끝날 때 보는 곳 { target, fov, minutes }  target: {cons}|{star}|{dso}|{body}|{altaz:[고도, 방위]}
+//   move    앞 장면에서 넘어오는 데 걸리는 초     start  첫 장면이 시작하는 곳
+//   fx      연출 (at: 시작 초, dur: 길이)
+//           timelapse(from,to: 분) · lightsOut(from,to: 등급) · labels(from,to: 0~1) · lines(cons) · art(cons, stagger) · pointer(from,to: 별 이름)
+//   keepArt 앞 장면에서 이어서 보여 줄 별자리 그림
+//   title, sub  휴대폰 자막   cue  진행자 화면에 크게 뜨는 참여 질문   note  진행자 대본
+// 시각(minutes)은 오후 6시부터 지난 분이에요. 92 = 오후 7시 32분.
+window.STORY_SHOWS = [
+  {
+    id: 'first',
+    title: '첫 번째 이야기 · 별이 켜지는 하늘',
+    blurb: '노을 뒤에 별이 켜지는 모습, 북극성 찾기, 오늘의 주인공 토성. 5분쯤 걸려요.',
+    scenes: [
+      { start: { target: { altaz: [10, 250] }, fov: 100, minutes: 0 },
+        view: { target: { altaz: [45, 255] }, fov: 100, minutes: 92 }, move: 0,
+        fx: [{ type: 'timelapse', from: 0, to: 92, at: 0.5, dur: 14 }, { type: 'labels', from: 0, to: 1, at: 13, dur: 2 }],
+        title: '해가 지면, 별이 하나씩', sub: '오후 6시 → 7시 반을 14초 만에',
+        cue: '가장 먼저 보이는 별을 찾으면 손을 들어 주세요',
+        note: '오늘 해는 오후 5시 34분에 졌어요. 한 시간 반을 14초로 줄여서 보여 줄게요. 서쪽 높은 곳에 먼저 나타난 밝은 별 두 개가 직녀성과 견우성이에요. 밝은 별일수록 먼저 보여요.' },
+
+      { view: { target: { altaz: [58, 175] }, fov: 108, minutes: 92 }, move: 5,
+        fx: [{ type: 'labels', from: 1, to: 0, at: 0, dur: 1.5 }, { type: 'lightsOut', from: 2.5, to: 6.3, at: 2, dur: 10 }],
+        title: '도시 불빛이 모두 꺼진다면', sub: '맨눈으로 보이는 별: 수백 개 → 수천 개',
+        cue: '비가 그치면 우리 공원에서는 별이 몇 개쯤 보일까요?',
+        note: '도시 한가운데서는 밝은 별 수백 개만 보이지만, 불빛이 하나도 없는 산골에서는 맨눈으로 수천 개가 보여요. 가운데 뿌연 띠가 은하수예요. 오송처럼 도시와 가까운 곳에서는 은하수를 보기 어려워요.' },
+
+      { view: { target: { star: '북극성' }, fov: 96, minutes: 92 }, move: 6,
+        fx: [{ type: 'labels', from: 0, to: 1, at: 0, dur: 2 }, { type: 'lines', cons: ['UMi', 'Cas'], at: 3, dur: 2 },
+             { type: 'pointer', from: '나비', to: '북극성', at: 6, dur: 2.5 }],
+        title: '움직이지 않는 별, 북극성', sub: '모든 별이 이 별을 중심으로 돌아요',
+        cue: '주먹을 쥐고 팔을 쭉 뻗어 보세요. 주먹 하나가 10도예요',
+        note: '북쪽 하늘의 별들은 밤새 북극성을 가운데 두고 크게 원을 그려요. 북극성은 지평선에서 37도, 주먹 네 개쯤 높이에 있어요. W 모양 카시오페이아에서 점선을 따라가면 찾을 수 있어요.' },
+
+      { view: { target: { body: 'Saturn' }, fov: 40, minutes: 92 }, move: 7,
+        fx: [],
+        title: '오늘의 주인공, 토성', sub: '깜빡이지 않고 차분하게 빛나는 노란 점',
+        cue: '별과 행성은 어떻게 구별할까요?',
+        note: '남동쪽에서 차분하게 빛나는 노란 점이 토성이에요. 별은 반짝반짝 깜빡이지만 행성은 덜 깜빡여요. 지구에서 약 13억 km, 빛으로 70분쯤 걸리는 거리예요. 지금은 물고기자리 아래쪽, 고래자리와의 경계 가까이에 있어요.' },
+
+      { view: { target: { altaz: [84, 180] }, fov: 118, minutes: 92 }, move: 8,
+        fx: [{ type: 'labels', from: 1, to: 0, at: 3, dur: 4 }],
+        title: '잠깐 쉬어요', sub: '헤드셋을 벗고 눈을 쉬게 해 주세요',
+        cue: '헤드셋을 벗고 1분 쉬어요',
+        note: '여기까지가 첫 번째 이야기예요. 눈이 피곤하지 않게 헤드셋을 잠깐 벗어 주세요. 다음에는 가을 하늘에 사는 한 가족의 이야기를 들려줄게요.' }
+    ]
+  },
+  {
+    id: 'royal',
+    title: '두 번째 이야기 · 가을 하늘의 왕가',
+    blurb: '왕비 카시오페이아, 공주 안드로메다, 영웅 페르세우스, 날개 달린 말. 7분쯤 걸려요.',
+    scenes: [
+      { start: { target: { altaz: [45, 30] }, fov: 100, minutes: 92 },
+        view: { target: { cons: 'Cas' }, fov: 80, minutes: 92 }, move: 4,
+        fx: [{ type: 'lines', cons: ['Cas', 'Cep'], at: 2, dur: 2 }, { type: 'art', cons: ['Cas', 'Cep'], at: 4, dur: 2, stagger: 2 }],
+        title: '자랑이 많은 왕비', sub: '카시오페이아와 케페우스 왕',
+        cue: '여러분이 가장 자랑하고 싶은 건 뭔가요?',
+        note: '가을 하늘에는 한 가족의 이야기가 통째로 떠 있어요. 에티오피아의 카시오페이아 왕비는 딸 안드로메다가 바다의 요정들보다 더 아름답다고 자랑했어요. 바다의 신 포세이돈이 그 말을 듣고 크게 화가 났대요.' },
+
+      { view: { target: { cons: 'Cet' }, fov: 92, minutes: 92 }, move: 6,
+        fx: [{ type: 'lines', cons: ['Cet'], at: 2, dur: 2 }, { type: 'art', cons: ['Cet'], at: 4, dur: 2.5 }],
+        keepArt: ['Cas', 'Cep'],
+        title: '바다 괴물 케투스', sub: '고래자리',
+        cue: '괴물 등 위쪽에서 깜빡이지 않는 노란 점을 찾아보세요',
+        note: '화가 난 포세이돈은 바다 괴물 케투스를 보냈어요. 동쪽 낮은 곳의 커다란 고래자리가 그 괴물이에요. 괴물 등 위쪽에 있는 노란 점이 아까 본 토성이에요.' },
+
+      { view: { target: { cons: 'And' }, fov: 84, minutes: 92 }, move: 6,
+        fx: [{ type: 'lines', cons: ['And'], at: 2, dur: 2 }, { type: 'art', cons: ['And'], at: 4, dur: 2.5 }],
+        keepArt: ['Cas', 'Cep', 'Cet'],
+        title: '사슬에 묶인 공주', sub: '안드로메다',
+        cue: '공주를 구하려면 누가 와야 할까요?',
+        note: '괴물을 달래려면 공주를 바쳐야 한다는 말에, 안드로메다는 바닷가 바위에 사슬로 묶였어요. 하늘에서도 공주는 엄마 카시오페이아와 괴물 사이에 있어요.' },
+
+      { view: { target: { cons: 'Per' }, fov: 84, minutes: 92 }, move: 6,
+        fx: [{ type: 'lines', cons: ['Per'], at: 2, dur: 2 }, { type: 'art', cons: ['Per'], at: 4, dur: 2.5 }],
+        keepArt: ['Cas', 'Cep', 'Cet', 'And'],
+        title: '영웅 페르세우스', sub: '손에 든 것은 메두사의 머리',
+        cue: '메두사의 눈에 있는 별 ‘알골’을 찾아보세요',
+        note: '그때 날개 달린 신발을 신은 영웅 페르세우스가 날아왔어요. 보는 사람을 돌로 만드는 메두사의 머리를 들어 괴물을 돌로 만들었대요. 메두사의 눈 자리에 있는 알골은 약 3일마다 어두워졌다 밝아지는 신기한 별이에요.' },
+
+      { view: { target: { cons: 'Peg' }, fov: 86, minutes: 92 }, move: 6,
+        fx: [{ type: 'lines', cons: ['Peg'], at: 2, dur: 2 }, { type: 'art', cons: ['Peg'], at: 4, dur: 2.5 }],
+        keepArt: ['Cas', 'Cep', 'Cet', 'And', 'Per'],
+        title: '날개 달린 말, 페가수스', sub: '가을의 대사각형',
+        cue: '대사각형 안에 별이 몇 개 보이나요?',
+        note: '메두사가 쓰러질 때 날개 달린 말 페가수스가 태어났대요. 머리 위 높이 떠 있는 커다란 네모가 페가수스의 몸통, ‘가을의 대사각형’이에요.' },
+
+      { view: { target: { altaz: [55, 75] }, fov: 122, minutes: 92 }, move: 7,
+        fx: [{ type: 'lines', cons: ['Cas', 'Cep', 'Cet', 'And', 'Per', 'Peg'], at: 0, dur: 0.1 }],
+        keepArt: ['Cas', 'Cep', 'Cet', 'And', 'Per', 'Peg'],
+        title: '하늘에 남은 가족 사진', sub: '여섯 별자리, 한 이야기',
+        cue: '이야기 순서대로 손가락으로 따라가 볼까요?',
+        note: '조금 뒤로 물러나 볼게요. 왕비, 왕, 공주, 영웅, 괴물, 날개 달린 말이 북쪽부터 남동쪽 하늘에 모두 모여 있어요. 옛사람들은 이 이야기를 잊지 않으려고 하늘에 그려 넣었어요.' },
+
+      { view: { target: { dso: '안드로메다은하' }, fov: 34, minutes: 92 }, move: 7,
+        fx: [],
+        keepArt: ['And'],
+        title: '250만 년 전에 출발한 빛', sub: '안드로메다은하',
+        cue: '이 빛이 출발할 때 지구에는 누가 살았을까요?',
+        note: '공주의 허리께를 크게 보면 희뿌연 얼룩이 있어요. 별이 1조 개쯤 모인 이웃 은하, 안드로메다은하예요. 지금 보는 빛은 250만 년 전에 출발했어요.' },
+
+      { view: { target: { dso: '좀생이별 (플레이아데스)' }, fov: 62, minutes: 152 }, move: 8,
+        fx: [{ type: 'timelapse', from: 92, to: 152, at: 0, dur: 8 }, { type: 'lines', cons: ['Tau'], at: 8, dur: 2 }, { type: 'art', cons: ['Tau'], at: 10, dur: 2.5 }],
+        title: '좀생이별', sub: '밤 8시 반, 동쪽에서 올라오는 황소',
+        cue: '좀생이별이 몇 개로 보이나요?',
+        note: '시간을 한 시간 빨리 돌렸어요. 동쪽에서 작은 별들이 모인 무리가 올라왔어요. 우리 조상들은 좀생이별이라고 부르며, 이 별과 달을 보고 그해 농사를 점치기도 했어요.' },
+
+      { view: { target: { altaz: [84, 180] }, fov: 118, minutes: 152 }, move: 9,
+        fx: [{ type: 'labels', from: 1, to: 0, at: 4, dur: 4 }],
+        title: '구름 위의 하늘', sub: '비가 와도 별은 그 자리에 있어요',
+        cue: '헤드셋을 벗어 주세요',
+        note: '이름과 선을 지우면 이렇게 별만 남아요. 오늘은 비구름에 가려 있지만, 구름 위에는 지금 본 하늘이 그대로 떠 있어요. 맑은 날 밤에 꼭 한 번 직접 올려다봐 주세요.' }
+    ]
+  }
+];
+</script>
 <script>(function () {
   'use strict';
   var S = window.SKY, C = SkyCore;
@@ -2649,7 +2804,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
         try { sessionStorage.removeItem('osong-key'); } catch (x) {}
         my.onclose = null; my.close();
       }
-      else if (m.k === 'state') { ST = m; stAt = Date.now(); if (Date.now() - followAt > 3000) { follow = !!(m.view && m.view.on); renderFollow(); } render(); }
+      else if (m.k === 'state') { ST = m; stAt = Date.now(); storyT0 = m.story ? Date.now() - (m.story.el || 0) : 0; if (Date.now() - followAt > 3000) { follow = !!(m.view && m.view.on); renderFollow(); } render(); }
       else if (m.k === 'counts') { counts = m; $('hPeers').textContent = m.phones + '대 접속 (VR 중 ' + m.vr + '대)'; }
     };
     my.onclose = function () { authed = false; setConn('연결이 끊겼어요. 다시 연결 중…', false); setTimeout(connect, retry); retry = Math.min(retry * 2, 8000); };
@@ -2679,12 +2834,14 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
     $('hArt').setAttribute('aria-pressed', artOn ? 'true' : 'false');
     $('hArt').textContent = '별자리 그림 · ' + (artOn ? '켜짐' : '꺼짐');
     if (document.activeElement !== $('hNote') && $('hNote').value !== ST.note && ST.note) $('hNote').value = ST.note;
+    renderStory();
     tick();
   }
   function tick() {
+    storyState();
     if (!ST) return;
     var rem = timerRem();
-    $('hBig').textContent = phaseName(ST.phase) + (ST.timer ? '  ' + (ST.timer.label ? ST.timer.label + ' ' : '') + fmtTime(rem) + (ST.timer.paused ? ' (멈춤)' : '') : '');
+    $('hBig').textContent = (curStory() ? '이야기 ' + (ST.story.i + 1) + '장면' : phaseName(ST.phase)) + (ST.timer ? '  ' + (ST.timer.label ? ST.timer.label + ' ' : '') + fmtTime(rem) + (ST.timer.paused ? ' (멈춤)' : '') : '');
     var mins = curMinutes(); if (mins > 180) mins = 30 + ((mins - 30) % 150);
     $('hClock').textContent = clockText(mins);
     if (document.activeElement !== $('hTime')) $('hTime').value = Math.round(mins);
@@ -2724,7 +2881,7 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   });
   function renderFollow() {
     $('hFollow').setAttribute('aria-pressed', follow ? 'true' : 'false');
-    $('hFollow').textContent = '참가자 화면 따라오게 하기 · ' + (follow ? '켜짐' : '꺼짐');
+    $('hFollow').textContent = '따라오게 하기 · ' + (follow ? '켜짐' : '꺼짐');
     document.querySelector('.hview').classList.toggle('live', follow);
   }
   $('hFollow').addEventListener('click', function () { follow = !follow; followAt = Date.now(); renderFollow(); sendView(true); });
@@ -2740,13 +2897,84 @@ if (typeof module !== 'undefined') module.exports = SkyCore;
   function renderPrev() {
     $('hPrev').hidden = !prevOn;
     $('hPrevToggle').setAttribute('aria-pressed', prevOn ? 'true' : 'false');
-    $('hPrevToggle').textContent = '참가자 화면 미리보기 · ' + (prevOn ? '숨기기' : '보이기');
+    $('hPrevToggle').textContent = '미리보기 · ' + (prevOn ? '숨기기' : '보이기');
     // unloading the frames when hidden keeps the laptop from drawing three skies at once
     $('pVR').src = prevOn ? prevSrc('vr') : 'about:blank';
     $('pSC').src = prevOn ? prevSrc('screen') : 'about:blank';
   }
   $('hPrevToggle').addEventListener('click', function () { prevOn = !prevOn; try { localStorage.setItem('osong-prev', prevOn ? 'on' : 'off'); } catch (e) {} renderPrev(); });
   renderPrev();
+
+  // ---- story (scene-by-scene show) ----
+  var SH = window.STORY_SHOWS || [], storyT0 = 0, lastServerShow = null;
+  function showBy(id) { for (var i = 0; i < SH.length; i++) if (SH[i].id === id) return SH[i]; return null; }
+  SH.forEach(function (s) { var o = document.createElement('option'); o.value = s.id; o.textContent = s.title + ' (' + s.scenes.length + '장면)'; $('sShow').appendChild(o); });
+  function settleTime(sc) {
+    var t = sc.move || 0;
+    (sc.fx || []).forEach(function (f) { t = Math.max(t, f.at + (f.dur || 0) + (f.stagger || 0) * ((f.cons || []).length - 1)); });
+    return t;
+  }
+  function curStory() { return ST && ST.story && showBy(ST.story.show) ? ST.story : null; }
+  function renderStory() {
+    var cs = curStory(), show = cs ? showBy(cs.show) : showBy($('sShow').value);
+    if (!show) return;
+    // follow the server only when it switches to another show, so a choice you just made in the list is kept
+    var srv = cs ? cs.show : null;
+    if (srv && srv !== lastServerShow) $('sShow').value = srv;
+    lastServerShow = srv;
+    if (cs && cs.show !== $('sShow').value) cs = null;
+    show = cs ? showBy(cs.show) : showBy($('sShow').value);
+    $('sBlurb').textContent = show.blurb || '';
+    var n = show.scenes.length, i = cs ? cs.i : -1;
+    var list = $('sList');
+    if (list.getAttribute('data-show') !== show.id) {
+      list.innerHTML = ''; list.setAttribute('data-show', show.id);
+      show.scenes.forEach(function (sc, j) {
+        var li = document.createElement('li'), b = document.createElement('button');
+        b.type = 'button'; b.innerHTML = '<span class="n"></span><span class="t"></span>';
+        b.querySelector('.n').textContent = (j < 9 ? '0' : '') + (j + 1); b.querySelector('.t').textContent = sc.title;
+        b.addEventListener('click', function () { cmd('story', { show: show.id, i: j }); });
+        li.appendChild(b); list.appendChild(li);
+      });
+    }
+    list.querySelectorAll('button').forEach(function (b, j) { if (j === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+    if (cs) {
+      var sc = show.scenes[i];
+      $('sCount').textContent = (i + 1) + ' / ' + n;
+      $('sTitle').textContent = sc.title || ''; $('sSub').textContent = sc.sub || '';
+      $('sCue').textContent = sc.cue || ''; $('sNote').textContent = sc.note || '';
+      $('sGo').textContent = i + 1 < n ? '다음 장면' : '마지막 장면'; $('sGo').disabled = i + 1 >= n;
+      $('sPrev').disabled = i <= 0; $('sEnd').disabled = false;
+    } else {
+      $('sCount').textContent = '— / ' + n;
+      $('sTitle').textContent = '시작을 누르면 이야기가 시작돼요';
+      $('sSub').textContent = '접속한 모든 폰이 같은 장면으로 넘어가요. 장면마다 짧은 연출이 끝나면 멈춰서 기다려요.';
+      $('sCue').textContent = ''; $('sNote').textContent = show.scenes[0].note || '';
+      $('sGo').textContent = '시작'; $('sGo').disabled = false; $('sPrev').disabled = true; $('sEnd').disabled = true;
+    }
+  }
+  function storyState() {
+    var cs = curStory(), el = $('sState');
+    if (!cs) { el.textContent = ''; el.className = ''; return; }
+    var sc = showBy(cs.show).scenes[cs.i], left = settleTime(sc) - (Date.now() - storyT0) / 1000;
+    if (left > 0) { el.textContent = '연출 중 · ' + Math.ceil(left) + '초'; el.className = ''; }
+    else { el.textContent = '이야기할 차례'; el.className = 'wait'; }
+  }
+  $('sShow').addEventListener('change', function () { renderStory(); });
+  $('sGo').addEventListener('click', function () {
+    var cs = curStory(), show = showBy($('sShow').value); if (!show) return;
+    if (!cs || cs.show !== show.id) cmd('story', { show: show.id, i: 0 });
+    else if (cs.i + 1 < show.scenes.length) cmd('story', { show: show.id, i: cs.i + 1 });
+  });
+  $('sPrev').addEventListener('click', function () { var cs = curStory(); if (cs && cs.i > 0) cmd('story', { show: cs.show, i: cs.i - 1 }); });
+  $('sEnd').addEventListener('click', function () { cmd('story', { show: null }); });
+  document.addEventListener('keydown', function (e) {
+    var tg = e.target && e.target.tagName;
+    if (tg === 'INPUT' || tg === 'SELECT' || tg === 'TEXTAREA' || !authed) return;
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); if (!$('sGo').disabled) $('sGo').click(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); $('sPrev').click(); }
+  });
+  renderStory();
 
   // ---- QR / link ----
   function roomLink() { return new URL('./', location.href).href + '?r=' + room; }
