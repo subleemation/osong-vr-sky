@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>진행자 콘솔 · 별이 빛나는 밤에</title>
+<meta name="theme-color" content="#07090f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/app.css?v=7">
+<link rel="stylesheet" href="css/host.css?v=8">
+</head>
+<body class="host">
+<div class="host-grid">
+  <section class="stage" aria-label="참여자 화면 미리보기">
+    <canvas id="skygl" aria-hidden="true"></canvas>
+    <canvas id="sky"></canvas>
+    <div class="stage-top">
+      <span class="stage-clock" id="stageClock">19:30</span>
+      <span class="stage-label">참여자 화면 미리보기</span>
+    </div>
+    <div class="caption" id="caption" hidden>
+      <div class="caption-title" id="capTitle"></div>
+      <div class="caption-sub" id="capSub"></div>
+    </div>
+  </section>
+
+  <aside class="console">
+    <header class="con-head">
+      <div>
+        <p class="meta"><span>진행자 콘솔</span><span>2026.11.01</span></p>
+        <h1 class="con-title">별이 빛나는 밤에</h1>
+      </div>
+      <div class="room"><span>방 코드</span><b id="roomCode">----</b></div>
+    </header>
+
+    <section class="con-block join">
+      <button class="qr" id="qr" type="button" title="크게 보기 (Q)"></button>
+      <div class="join-text">
+        <p class="join-lead">휴대폰 카메라로 QR을 찍어 접속해요</p>
+        <p class="join-url" id="joinUrl"></p>
+        <p class="peer" id="peerState" data-state="connecting"><i></i><span id="peerText">연결 서버에 접속하는 중</span></p>
+        <p class="count"><b id="count">0</b>명 접속 중</p>
+        <div class="join-actions">
+          <button type="button" class="btn-line" id="qrBigBtn">QR 크게</button>
+          <button type="button" class="btn-line" id="newRoom">새 방 코드</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="con-block intro-block">
+      <div class="con-label"><span>오프닝</span><span class="aside" id="introFilm"></span></div>
+      <div class="transport"><button type="button" class="tbtn primary big" id="introStart">체험 시작</button></div>
+      <div class="transport intro-row">
+        <button type="button" class="tbtn" id="introSkip">오프닝 건너뛰기</button>
+        <button type="button" class="tbtn" id="introReplay">오프닝 다시 재생</button>
+        <button type="button" class="tbtn warn" id="introReset">체험 초기화</button>
+      </div>
+      <p class="intro-state" id="introState"></p>
+    </section>
+
+    <section class="con-block">
+      <div class="con-label"><span>쇼</span><select id="showSel" aria-label="쇼 선택"></select></div>
+      <div class="transport">
+        <button type="button" class="tbtn" id="prevBtn">이전</button>
+        <button type="button" class="tbtn primary big" id="nextBtn">시작</button>
+        <button type="button" class="tbtn" id="stopBtn">끝내기</button>
+        <span class="tpos"><b id="sceneNo">-</b> / <span id="sceneCount">-</span></span>
+      </div>
+      <p class="keys">→ 또는 스페이스 다음 장면 · ← 이전 장면 · Q QR 크게</p>
+    </section>
+
+    <section class="con-block script">
+      <div class="con-label"><span>지금 장면</span><span id="settle" class="mono"></span></div>
+      <h2 id="nowTitle">쇼를 고르고 시작을 누르세요</h2>
+      <p class="cue" id="nowCue" hidden></p>
+      <p id="nowNote" class="note">시작하면 접속한 모든 휴대폰이 같은 장면으로 넘어가요. 장면은 짧은 연출이 끝나면 멈춰서 기다리고, 다음 장면 버튼을 누를 때 넘어가요.</p>
+      <div class="next" id="nextWrap" hidden>
+        <div class="con-label"><span>다음 장면</span></div>
+        <p id="nextNote"></p>
+      </div>
+    </section>
+
+    <section class="con-block">
+      <div class="con-label"><span>장면 목록</span><span class="aside">누르면 그 장면으로 이동</span></div>
+      <ol class="steplist" id="stepList"></ol>
+    </section>
+  </aside>
+</div>
+
+<div id="qrBig" hidden role="dialog" aria-label="접속 QR 코드">
+  <div class="qrbig-inner">
+    <div class="qrbig-code" id="qrBigCode"></div>
+    <div class="qrbig-text">
+      <p class="meta"><span>별이 빛나는 밤에</span><span>방 <b id="qrBigRoom"></b></span></p>
+      <h2>휴대폰 카메라로 찍어 주세요</h2>
+      <p id="qrBigUrl" class="mono"></p>
+      <p class="fine">아무 곳이나 누르면 닫혀요</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js?v=7"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="js/sky-data.js?v=7"></script>
+<script src="js/sky-core.js?v=7"></script>
+<script src="js/content.js?v=7"></script>
+<script src="js/figures-data.js?v=7"></script>
+<script src="js/skygl.js?v=7"></script>
+<script src="js/engine.js?v=7"></script>
+<script src="js/shows.js?v=7"></script>
+<script src="js/sync.js?v=8"></script>
+<script src="js/host.js?v=8"></script>
+</body>
+</html>
