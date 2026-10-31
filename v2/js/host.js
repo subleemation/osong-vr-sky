@@ -131,7 +131,7 @@
   function filmLen() { return film.status === 'ok' && film.dur ? Math.round(film.dur * 100) / 100 : 0; }
   function introNow() {
     var I = cur.intro;
-    if (!I) return { phase: 'sky', busy: false, none: true };
+    if (!I) return cur.show && cur.status === 'live' ? { phase: 'sky', busy: false } : { phase: 'wait', busy: false };   // phones wait until 체험 시작
     if (I.st === 'wait') return { phase: 'wait', busy: false };
     var t = hub ? hub.now() : Date.now(), len = I.len > 0 ? I.len : IN.NOFILM, e = (t - (I.pat || I.at)) / 1000;
     if (I.st === 'skip') { var k = (t - I.at) / 1000; return k < IN.SKIPBLACK + IN.FADE ? { phase: 'fade', busy: true } : { phase: 'sky', busy: false }; }
@@ -145,7 +145,7 @@
   function introRender() {
     var x = introNow(), I = cur.intro;
     $('introState').textContent =
-      x.phase === 'wait' ? '대기 중이에요. 참여자 화면은 검게 가려져 있어요.' :
+      x.phase === 'wait' ? '대기 중이에요. 참여자 화면에는 ‘대기 중’이 떠 있고, 체험 시작을 누르면 오프닝부터 시작돼요.' :
       x.phase === 'dark' ? '화면이 어두워지는 중이에요.' :
       x.phase === 'film' ? '오프닝 영상 재생 중 · ' + Math.ceil(x.left) + '초 남음' :
       x.phase === 'fade' ? '별 화면이 서서히 나타나는 중이에요.' : '참여자 화면에 별이 보이고 있어요.';

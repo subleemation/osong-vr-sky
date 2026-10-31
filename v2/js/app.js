@@ -268,7 +268,7 @@
   // ---------- presenter link ----------
   var LIVE_TEXT = {
     connecting: '진행자 화면에 연결하는 중',
-    connected: '진행자와 연결됐어요. 쇼가 시작되면 자동으로 따라가요.',
+    connected: '진행자와 연결됐어요. 대기 중이에요. 진행자가 시작하면 바로 시작돼요.',
     reconnecting: '연결이 끊겨서 다시 잇는 중이에요'
   };
   function setLive(s) {

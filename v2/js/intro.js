@@ -44,8 +44,11 @@ var VRIntro = (function () {
   }
   function set(state, alpha, showVid) { I.state = state; I.alpha = alpha; I.showVid = !!showVid; }
 
+  var T0 = Date.now(), everConnected = false;
   function readServer() {
     var s = O && O.guest && O.guest.state(), it = s && s.intro;
+    if (O && O.guest && O.guest.status() === 'connected') everConnected = true;
+    I.live = !!(s && s.show && s.status === 'live');
     if (!it || !it.st) { I.srv = null; return; }
     var off = O.guest.now() - Date.now();            // server clock minus ours
     I.srv = { st: it.st, n: it.n | 0, len: typeof it.len === 'number' ? it.len : null, t0: (it.at || 0) - off, playT0: (it.pat || it.at || 0) - off };
@@ -53,7 +56,12 @@ var VRIntro = (function () {
   function evaluate() {
     readServer();
     var s = I.srv;
-    if (!s) { stopVid(false); set('ACTIVE', 0); return; }
+    if (!s) {
+      // nothing started yet: phones wait on a dark screen until the presenter presses 체험 시작.
+      // A show that is already running, or a sync server we never reached (20 s), shows the sky instead.
+      if (I.live || (!everConnected && Date.now() - T0 > 20000)) { stopVid(false); set('ACTIVE', 0); return; }
+      stopVid(true); I.n = -1; set('IDLE', 1); return;
+    }
     if (s.st === 'wait') { stopVid(true); I.n = -1; set('IDLE', 1); return; }
     if (s.n !== I.n) { I.n = s.n; I.started = false; I.vidOk = false; I.playFail = false; I.endE = null; I.skipEnd = false; }
     if (I.doneN === s.n) { stopVid(true); set('ACTIVE', 0); return; }
@@ -121,11 +129,15 @@ var VRIntro = (function () {
       }
     }
     if (I.state === 'IDLE') {
-      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(236,232,222,0.42)';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
       var spots = eyes || [{ cx: W / 2, cy: H / 2, R: Math.min(W, H) / 2 }];
+      var pulse = 0.55 + 0.25 * Math.sin(Date.now() / 700);
       for (var j = 0; j < spots.length; j++) {
-        g.font = Math.round(Math.max(13, Math.min(20, spots[j].R / 9))) + 'px "IBM Plex Sans KR", sans-serif';
-        g.fillText('잠시 후 시작해요', spots[j].cx, spots[j].cy);
+        var fs = Math.max(14, Math.min(26, spots[j].R / 7));
+        g.font = '600 ' + Math.round(fs) + 'px "IBM Plex Sans KR", sans-serif'; g.fillStyle = 'rgba(236,232,222,' + pulse.toFixed(2) + ')';
+        g.fillText('대기 중', spots[j].cx, spots[j].cy - fs * 0.55);
+        g.font = Math.round(fs * 0.62) + 'px "IBM Plex Sans KR", sans-serif'; g.fillStyle = 'rgba(236,232,222,0.45)';
+        g.fillText('진행자가 시작하면 바로 시작돼요', spots[j].cx, spots[j].cy + fs * 0.7);
       }
     }
   }
