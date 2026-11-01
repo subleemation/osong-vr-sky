@@ -368,7 +368,7 @@
     };
     if (ev) {
       o.highlight = ev.highlight; o.figures = ev.figures; o.pointer = ev.pointer;
-      o.lineCons = ev.lineCons; o.labelAlpha = ev.labelAlpha; o.trails = ev.trails; o.eyepiece = ev.eyepiece;
+      o.lineCons = ev.lineCons; o.labelAlpha = ev.labelAlpha; o.trails = ev.trails; o.eyepiece = ev.eyepiece; o.photoGrow = ev.photoGrow;
       if (ev.lim != null) o.lim = ev.lim;
       var M = C.eqjToEnu(window.SKY, ev.minutes), e = ev.endTargetEnu;
       o.guide = st.mode === 'vr' ? [M[0][0] * e[0] + M[1][0] * e[1] + M[2][0] * e[2], M[0][1] * e[0] + M[1][1] * e[1] + M[2][1] * e[2], M[0][2] * e[0] + M[1][2] * e[1] + M[2][2] * e[2]] : null;

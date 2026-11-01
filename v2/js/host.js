@@ -180,7 +180,7 @@
       var aa = C.enuToAltAz(ev.dir);
       o.cam = camFrom(aa.az, clamp(aa.alt, -4, 86));
       o.minutes = ev.minutes; o.fov = ev.fov; o.highlight = ev.highlight; o.figures = ev.figures; o.pointer = ev.pointer;
-      o.lineCons = ev.lineCons; o.labelAlpha = ev.labelAlpha; o.trails = ev.trails; o.eyepiece = ev.eyepiece;
+      o.lineCons = ev.lineCons; o.labelAlpha = ev.labelAlpha; o.trails = ev.trails; o.eyepiece = ev.eyepiece; o.photoGrow = ev.photoGrow;
       if (ev.lim != null) o.lim = ev.lim;
       idleYaw = aa.az;
     } else {

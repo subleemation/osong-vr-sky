@@ -610,19 +610,21 @@ var SkyEngine = function (canvas, glCanvas) {
   }
 
   // deep-sky photos: faint at a normal field of view, full strength when zoomed in (show scenes use fov ~34)
-  var PA = [0, 0], PB = [0, 0], PC = [0, 0], PV = [0, 0, 0];
+  var PA = [0, 0], PB = [0, 0], PC = [0, 0], PM = [0, 0], PV = [0, 0, 0];
   function photos(view, o) {
     if (!PHOTOS.length || frame.dark < 0.05) return;
     var fovNow = (view.vr ? o.vrFov : o.fov) || 80, zoom = clamp((80 - fovNow) / 45, 0, 1);
     for (var i = 0; i < PHOTOS.length; i++) {
       var p = PHOTOS[i]; if (!p.ok || altOf(p.cen) < 0.02) continue;
-      toCam(p.cen, PV); if (PV[2] < 0.2) continue;
+      toCam(p.cen, PV); if (PV[2] < 0.2 || !proj(view, PV[0], PV[1], PV[2], PM)) continue;
       toCam(p.tl, PV); if (!proj(view, PV[0], PV[1], PV[2], PA)) continue;
       toCam(p.tr, PV); if (!proj(view, PV[0], PV[1], PV[2], PB)) continue;
       toCam(p.bl, PV); if (!proj(view, PV[0], PV[1], PV[2], PC)) continue;
+      var gr = o.photoGrow && o.photoGrow.id === p.id ? o.photoGrow : null, g = gr ? gr.s : 1;
+      if (g !== 1) { var pts = [PA, PB, PC]; for (var q = 0; q < 3; q++) { pts[q][0] = PM[0] + (pts[q][0] - PM[0]) * g; pts[q][1] = PM[1] + (pts[q][1] - PM[1]) * g; } }
       var w = p.img.width, h = p.img.height;
       ctx.save();
-      ctx.globalAlpha = frame.dark * (p.base + (1 - p.base) * zoom);
+      ctx.globalAlpha = frame.dark * (p.base + (1 - p.base) * Math.max(zoom, gr ? gr.q : 0));
       ctx.transform((PB[0] - PA[0]) / w, (PB[1] - PA[1]) / w, (PC[0] - PA[0]) / h, (PC[1] - PA[1]) / h, PA[0], PA[1]);
       ctx.drawImage(p.img, 0, 0);
       ctx.restore();
@@ -667,12 +669,14 @@ var SkyEngine = function (canvas, glCanvas) {
     var steps = 28, span = tr.hours * 60 * tr.p, Ms = [];
     for (var k = 0; k <= steps; k++) Ms.push(C.eqjToEnu(S, minutes - span * (1 - k / steps)));
     ctx.save();
-    ctx.lineWidth = Math.max(0.8, view.f / 620);
+    ctx.lineCap = 'round';
+    var lw = Math.max(1, view.f / 520);
     for (var col = 0; col < 6; col++) {
-      ctx.strokeStyle = 'rgba(' + STAR_RGB[col].join(',') + ',0.42)';
+      // mostly white with a hint of each star's colour, a soft halo underneath
+      var rgb = STAR_RGB[col].map(function (c) { return Math.round(c * 0.35 + 255 * 0.65); }).join(',');
       ctx.beginPath();
       for (var i = 0; i < NS; i++) {
-        if (SB[i] !== col || SM[i] > 3.6) continue;
+        if (SB[i] !== col || SM[i] > 3.9) continue;
         var v = [SV[3 * i], SV[3 * i + 1], SV[3 * i + 2]], started = false;
         for (var q = 0; q <= steps; q++) {
           var e = C.apply(Ms[q], v);
@@ -682,7 +686,8 @@ var SkyEngine = function (canvas, glCanvas) {
           if (!started) { ctx.moveTo(P[0], P[1]); started = true; } else ctx.lineTo(P[0], P[1]);
         }
       }
-      ctx.stroke();
+      ctx.strokeStyle = 'rgba(' + rgb + ',0.13)'; ctx.lineWidth = lw * 3.2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(' + rgb + ',0.72)'; ctx.lineWidth = lw; ctx.stroke();
     }
     ctx.restore();
   }
