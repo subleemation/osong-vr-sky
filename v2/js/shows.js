@@ -87,7 +87,7 @@ var SHOWS = [
         note: '한 걸음 물러서서 볼게요. 이야기에 나온 여섯 주인공이 모두 동쪽 하늘에 모여 있어요. 옛사람들은 이 이야기를 잊지 않으려고 하늘에 그려 넣었어요.' },
 
       { view: { target: { dso: '안드로메다은하' }, fov: 34, minutes: 92 }, move: 7,
-        fx: [{ type: 'eyepiece', photo: 'm31', at: 6, dur: 2 }],
+        fx: [{ type: 'eyepiece', photo: 'm31', at: 3, dur: 2 }],
         keepArt: ['And'],
         title: '250만 년 전에 출발한 빛', sub: '안드로메다은하',
         cue: '이 빛이 출발할 때 지구에는 누가 살았을까요?',
