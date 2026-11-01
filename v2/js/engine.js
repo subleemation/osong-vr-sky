@@ -97,6 +97,14 @@ var SkyEngine = function (canvas, glCanvas) {
     return { v: new Float32Array(pts), lv: new Uint8Array(lv), step: STEP * D2R, levels: levels };
   })();
   var DSO = K.DSO.map(function (d) { return { name: d.name, text: d.text, v: C.radec2vec(d.ra, d.dec) }; });
+  // real photos of a few deep-sky objects (js/photos.js), pinned to the sky by three image corners
+  var PHOTOS = (window.SKY_PHOTOS || []).map(function (p) {
+    var it = { id: p.id, img: new Image(), ok: false, base: p.base || 0.5,
+      tl: C.radec2vec(p.tl[0], p.tl[1]), tr: C.radec2vec(p.tr[0], p.tr[1]), bl: C.radec2vec(p.bl[0], p.bl[1]) };
+    it.cen = C.radec2vec((p.tr[0] + p.bl[0]) / 2, (p.tr[1] + p.bl[1]) / 2);
+    it.img.onload = function () { it.ok = true; }; it.img.src = p.src;
+    return it;
+  });
   // constellation illustrations (Johan Meuris / Stellarium), loaded on first use and tinted warm
   var ART = window.FIGURE_ART || {};
   function artFor(id) {
@@ -601,6 +609,26 @@ var SkyEngine = function (canvas, glCanvas) {
     }
   }
 
+  // deep-sky photos: faint at a normal field of view, full strength when zoomed in (show scenes use fov ~34)
+  var PA = [0, 0], PB = [0, 0], PC = [0, 0], PV = [0, 0, 0];
+  function photos(view, o) {
+    if (!PHOTOS.length || frame.dark < 0.05) return;
+    var fovNow = (view.vr ? o.vrFov : o.fov) || 80, zoom = clamp((80 - fovNow) / 45, 0, 1);
+    for (var i = 0; i < PHOTOS.length; i++) {
+      var p = PHOTOS[i]; if (!p.ok || altOf(p.cen) < 0.02) continue;
+      toCam(p.cen, PV); if (PV[2] < 0.2) continue;
+      toCam(p.tl, PV); if (!proj(view, PV[0], PV[1], PV[2], PA)) continue;
+      toCam(p.tr, PV); if (!proj(view, PV[0], PV[1], PV[2], PB)) continue;
+      toCam(p.bl, PV); if (!proj(view, PV[0], PV[1], PV[2], PC)) continue;
+      var w = p.img.width, h = p.img.height;
+      ctx.save();
+      ctx.globalAlpha = frame.dark * (p.base + (1 - p.base) * zoom);
+      ctx.transform((PB[0] - PA[0]) / w, (PB[1] - PA[1]) / w, (PC[0] - PA[0]) / h, (PC[1] - PA[1]) / h, PA[0], PA[1]);
+      ctx.drawImage(p.img, 0, 0);
+      ctx.restore();
+    }
+  }
+
   // arrow at the edge of the view pointing toward a target that is off-screen (show guidance)
   function guideArrow(view, v, fontPx) {
     toCam(v, CV);
@@ -669,7 +697,11 @@ var SkyEngine = function (canvas, glCanvas) {
     ctx.fillStyle = 'rgba(0,0,0,' + 0.88 * a + ')'; ctx.fill();
     ctx.beginPath(); ctx.arc(view.cx, view.cy, r, 0, Math.PI * 2); ctx.clip();
     ctx.fillStyle = 'rgba(2,3,6,' + 0.9 * a + ')'; ctx.fillRect(view.cx - r, view.cy - r, r * 2, r * 2);
-    if (SATURN.complete && SATURN.naturalWidth) {
+    var ph = null; for (var pi = 0; ep.photo && pi < PHOTOS.length; pi++) if (PHOTOS[pi].id === ep.photo) ph = PHOTOS[pi];
+    if (ph && ph.ok) {                       // a deep-sky photo filling the eyepiece
+      var pw = r * 2.1;
+      ctx.globalAlpha = a; ctx.drawImage(ph.img, view.cx - pw / 2, view.cy - pw / 2, pw, pw);
+    } else if (!ep.photo && SATURN.complete && SATURN.naturalWidth) {
       var sw = r * 1.5, sh = sw * SATURN.naturalHeight / SATURN.naturalWidth;
       ctx.globalAlpha = a;
       ctx.translate(view.cx, view.cy); ctx.rotate(-0.12);
@@ -680,7 +712,7 @@ var SkyEngine = function (canvas, glCanvas) {
     ctx.strokeStyle = 'rgba(200,190,170,0.35)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(view.cx, view.cy, r, 0, Math.PI * 2); ctx.stroke();
     ctx.font = Math.round(fontPx * 0.78) + 'px ' + MONO; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(214,206,190,0.75)'; ctx.fillText('허블 사진 · 2009년, 올해처럼 고리가 옆으로 누운 때', view.cx, view.vr ? view.cy - r - fontPx * 0.9 : view.cy + r + fontPx * 1.1);
+    ctx.fillStyle = 'rgba(214,206,190,0.75)'; ctx.fillText(ep.photo === 'm31' ? '망원경 사진 · 안드로메다은하 (HG731GZ)' : ep.photo === 'm45' ? '망원경 사진 · 좀생이별 (HG731GZ)' : '허블 사진 · 2009년, 올해처럼 고리가 옆으로 누운 때', view.cx, view.cy - r - fontPx * 0.9);   // above the circle: the scene caption sits below it
     ctx.restore();
   }
 
@@ -849,6 +881,7 @@ var SkyEngine = function (canvas, glCanvas) {
     }
     if (o.trails && o.trails.p > 0) trails(view, o.trails, o.minutes);
     if (o.figures) for (var fid in o.figures) { var fp = o.figures[fid]; if (fp.p > 0.001) drawFigure(view, fid, fp.p, fp.a); }
+    photos(view, o);
     if (o.pointer && o.pointer.from && o.pointer.to && o.pointer.p > 0) pointerLine(view, o.pointer);
     stars(view, limit);
     for (var bi = 0; bi < frame.bodies.length; bi++) drawBody(view, frame.bodies[bi]);

@@ -15,6 +15,7 @@
 //            {type:'trails', hours}                 star trails around the pole (Earth's rotation)
 //            {type:'pointer', from, to}             dotted guide from one named star to another
 //            {type:'eyepiece', body}                telescope view of a planet
+//            {type:'eyepiece', photo:'m31'|'m45'}   telescope photo of a deep-sky object (js/photos.js)
 //   keepArt  illustrations from earlier scenes that stay visible
 //   title, sub   caption on every phone          note   presenter script (host only)
 //   cue          one-line audience prompt shown big on the host screen
@@ -86,14 +87,14 @@ var SHOWS = [
         note: '한 걸음 물러서서 볼게요. 이야기에 나온 여섯 주인공이 모두 동쪽 하늘에 모여 있어요. 옛사람들은 이 이야기를 잊지 않으려고 하늘에 그려 넣었어요.' },
 
       { view: { target: { dso: '안드로메다은하' }, fov: 34, minutes: 92 }, move: 7,
-        fx: [],
+        fx: [{ type: 'eyepiece', photo: 'm31', at: 6, dur: 2 }],
         keepArt: ['And'],
         title: '250만 년 전에 출발한 빛', sub: '안드로메다은하',
         cue: '이 빛이 출발할 때 지구에는 누가 살았을까요?',
-        note: '공주의 허리께에 있는 희뿌연 얼룩이 별 1조 개가 모인 이웃 은하, 안드로메다은하예요. 지금 보는 빛은 250만 년 전에 출발했어요. 맨눈으로 볼 수 있는 가장 먼 천체예요.' },
+        note: '공주의 허리께에 있는 희뿌연 얼룩이 별 1조 개가 모인 이웃 은하, 안드로메다은하예요. 망원경으로 찍으면 이렇게 보여요. 지금 보는 빛은 250만 년 전에 출발했어요. 맨눈으로 볼 수 있는 가장 먼 천체예요.' },
 
       { view: { target: { dso: '좀생이별 (플레이아데스)' }, fov: 62, minutes: 152 }, move: 8,
-        fx: [{ type: 'timelapse', from: 92, to: 152, at: 0, dur: 8 }, { type: 'lines', cons: ['Tau'], at: 8, dur: 3 }, { type: 'art', cons: ['Tau'], at: 10, dur: 2.5 }],
+        fx: [{ type: 'timelapse', from: 92, to: 152, at: 0, dur: 8 }, { type: 'lines', cons: ['Tau'], at: 8, dur: 3 }, { type: 'art', cons: ['Tau'], at: 10, dur: 2.5 }, { type: 'eyepiece', photo: 'm45', at: 14, dur: 2 }],
         title: '좀생이별', sub: '밤 8시 반, 동쪽에서 떠오르는 황소',
         cue: '좀생이별이 몇 개로 보이나요?',
         note: '시간을 한 시간 앞으로 돌렸어요. 동쪽에서 떠오른 이 별 무리를 우리 조상들은 좀생이별이라 부르고, 달과의 거리를 보며 그해 농사를 점쳤어요. 아래쪽 붉은 별 알데바란은 황소의 눈이에요.' },
@@ -167,7 +168,7 @@ var ShowTimeline = (function () {
       });
       else if (f.type === 'trails') out.trails = { p: q, hours: f.hours };
       else if (f.type === 'pointer') out.pointer = { from: eng.vecOf({ star: f.from }), to: eng.vecOf({ star: f.to }), p: q };
-      else if (f.type === 'eyepiece') out.eyepiece = { body: f.body, a: q };
+      else if (f.type === 'eyepiece') out.eyepiece = { body: f.body, photo: f.photo || null, a: q };
     });
     (s.keepArt || []).forEach(function (c) { if (!out.figures[c]) out.figures[c] = { p: 1, a: 1 }; });
     (s.keepArt || []).forEach(function (c) { if (out.lineCons.every(function (l) { return l.id !== c; })) out.lineCons.push({ id: c, p: 1 }); });
