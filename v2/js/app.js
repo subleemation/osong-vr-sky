@@ -302,6 +302,7 @@
     guest = ShowSync.guest(room, { status: setLive });
     // opening film (js/intro.js): the presenter's 체험 시작 plays it on every phone, then the sky fades in
     if (window.PhoneCam) PhoneCam.start(room);   // small snapshots of this screen for the presenter's wall (js/phonecam.js)
+    if (window.EndTimer) EndTimer.attach({ guest: guest, mode: function () { return st.mode; }, sep: function () { return baseSep() + st.ipdAdj; } });
     if (window.VRIntro) VRIntro.attach({ guest: guest, mode: function () { return st.mode; }, sep: function () { return baseSep() + st.ipdAdj; }, onDone: function () { st.vrT = performance.now(); } });
   }
 

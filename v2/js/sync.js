@@ -91,7 +91,7 @@ var ShowSync = (function () {
     var link = connect('host', room, {
       status: on.status, count: on.count,
       // after a server restart the room is empty again: put our show state back
-      welcome: function (s) { if (s && (s.show || s.intro)) { cur = s; on.state && on.state(cur); } else if (cur.show || cur.intro) push({}); },
+      welcome: function (s) { if (s && (s.show || s.intro || s.timer)) { cur = s; on.state && on.state(cur); } else if (cur.show || cur.intro || cur.timer) push({}); },
       state: function (s) { cur = s; on.state && on.state(cur); }
     });
     function push(patch) {
@@ -99,7 +99,7 @@ var ShowSync = (function () {
       for (var k in cur) next[k] = cur[k];
       for (var p in patch) next[p] = patch[p];
       cur = next; on.state && on.state(cur);
-      link.send({ show: cur.show, status: cur.status, scene: cur.scene, sceneStart: cur.sceneStart, intro: cur.intro || null });
+      link.send({ show: cur.show, status: cur.status, scene: cur.scene, sceneStart: cur.sceneStart, intro: cur.intro || null, timer: cur.timer || null });
     }
     return {
       state: function () { return cur; },
@@ -111,7 +111,14 @@ var ShowSync = (function () {
         var c = cur.intro, n = ((c && c.n) || 0) + 1, t = link.now();
         if (v === 'play') { if (c && c.st === 'play' && t - c.at < 2500) return; push({ intro: { st: 'play', n: n, at: t, pat: t, len: len || 0 } }); }
         else if (v === 'skip') { if (c && c.st === 'play') push({ intro: { st: 'skip', n: c.n, at: t, pat: c.pat, len: c.len } }); }
-        else if (v === 'wait') push({ status: 'idle', scene: 0, intro: { st: 'wait', n: n, at: t, pat: t } });
+        else if (v === 'wait') push({ status: 'idle', scene: 0, intro: { st: 'wait', n: n, at: t, pat: t }, timer: null });
+      },
+      // closing timer: 'run' (minutes), 'done' (show the take-off message now), 'off' (clear it)
+      timer: function (v, min) {
+        var t = link.now();
+        if (v === 'run') push({ timer: { st: 'run', at: t, dur: Math.round(Math.max(0.25, Math.min(30, +min || 3)) * 60000) } });
+        else if (v === 'done') push({ timer: { st: 'done', at: t } });
+        else push({ timer: null });
       },
       close: link.close
     };

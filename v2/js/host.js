@@ -164,6 +164,22 @@
   });
   setInterval(introRender, 300);
 
+  // ---------- closing timer (phones draw it in js/endtimer.js) ----------
+  function etFmt(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function etRender() {
+    var T = cur.timer, now = hub ? hub.now() : Date.now(), left = T && T.st === 'run' ? T.at + T.dur - now : 0;
+    var done = T && (T.st === 'done' || left <= 0), run = T && !done;
+    $('etState').textContent = run ? etFmt(left) : done ? '끝' : '';
+    $('etText').textContent = run ? '폰에 남은 시간이 떠 있어요. 끝나면 ‘헤드셋을 천천히 벗어 주세요’가 떠요.' :
+      done ? '폰에 ‘헤드셋을 천천히 벗어 주세요’가 떠 있어요. 안내 지우기를 누르면 사라져요.' : '시작하면 폰 위쪽에 남은 시간이 떠요.';
+    $('etStart').textContent = T ? '다시 시작' : '타이머 시작';
+    $('etNow').disabled = !run; $('etClear').disabled = !T;
+  }
+  $('etStart').addEventListener('click', function () { hub.timer('run', +$('etMin').value || 3); });
+  $('etNow').addEventListener('click', function () { if (!this.disabled) hub.timer('done'); });
+  $('etClear').addEventListener('click', function () { if (!this.disabled) hub.timer('off'); });
+  setInterval(etRender, 300);
+
   // ---------- preview ----------
   function resize() { var r = stage.getBoundingClientRect(); eng.resize(r.width, r.height, window.devicePixelRatio || 1); }
   window.addEventListener('resize', resize); resize();
