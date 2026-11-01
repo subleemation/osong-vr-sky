@@ -107,3 +107,8 @@ select { appearance: none; background: var(--ink-2); color: var(--paper); border
 .cctv-grid.big { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 .cctv-grid.big .cam figcaption { font-size: 13px; padding: 5px 8px; }
 .cctv-block .btn-line, .cctv-wall-head .btn-line { grid-row: auto; grid-column: auto; }
+
+/* closing timer */
+.endtimer-block .transport { flex-wrap: wrap; }
+.et-min { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--paper-2); }
+.et-min input { width: 52px; background: var(--ink-2); color: var(--paper); border: 1px solid var(--rule-2); padding: 7px 6px; font: inherit; font-family: var(--mono); font-size: 14px; text-align: center; }
