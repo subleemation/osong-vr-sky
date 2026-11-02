@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="css/app.css?v=7">
+<link rel="stylesheet" href="css/app.css?v=8">
 <style>body.intro-on #info, body.intro-on #caption, body.intro-on #hint, body.intro-on .hud-clock, body.intro-on #hudLive { visibility: hidden; } body.intro-on #backBtn { opacity: 0.25; }</style>
 </head>
 <body>
@@ -20,7 +20,8 @@
     <header class="mast">
       <p class="meta"><span>2026.11.01 일</span><span>오송호수공원</span><span>36.64N 127.33E</span></p>
       <h1>별이 빛나는 밤에</h1>
-      <p class="lede">오늘 저녁 오송 하늘에 실제로 뜰 별과 별자리, 토성을 미리 둘러보는 VR이에요. 구름이 끼어도 볼 수 있어요.</p>
+      <p class="lede solo-only">오늘 저녁 오송 하늘에 실제로 뜰 별과 별자리, 토성을 미리 둘러보는 VR이에요. 구름이 끼어도 볼 수 있어요.</p>
+      <p class="lede guest-only">진행자와 함께 보는 화면이에요. <b>VR로 보기</b>만 누르면, 그다음은 진행자가 안내하는 대로 따라가요.</p>
     </header>
 
     <div class="live" id="live" hidden data-state="connecting">
@@ -29,11 +30,11 @@
 
     <div class="actions">
       <button class="act primary" id="goVR" type="button"><b>VR로 보기</b><small>헤드셋에 폰 넣기</small></button>
-      <button class="act" id="goScreen" type="button"><b>화면으로 보기</b><small>손가락으로 끌어서 둘러보기</small></button>
+      <button class="act solo-only" id="goScreen" type="button"><b>화면으로 보기</b><small>손가락으로 끌어서 둘러보기</small></button>
     </div>
     <p class="notice" id="sensorNote" hidden></p>
 
-    <section class="block" aria-labelledby="hTime">
+    <section class="block solo-only" aria-labelledby="hTime">
       <h2 id="hTime">시각</h2>
       <div class="field">
         <div class="clock" id="clockMenu">19:30<small>KST</small></div>
@@ -53,7 +54,7 @@
       </div>
     </section>
 
-    <section class="block" aria-labelledby="hShow">
+    <section class="block solo-only" aria-labelledby="hShow">
       <h2 id="hShow">보이는 것</h2>
       <div class="field" style="display:none">
         <div class="label"><span>하늘 밝기</span><span class="val" id="limVal">맨눈 4.6등급</span></div>
@@ -73,7 +74,7 @@
       </div>
     </section>
 
-    <section class="block" aria-labelledby="hShows">
+    <section class="block solo-only" aria-labelledby="hShows">
       <h2 id="hShows">쇼<span class="aside" id="showAside">진행자와 함께 보는 별 이야기</span></h2>
       <div id="showList"></div>
       <p class="hint" id="showHint">진행자가 쇼를 시작하면 이 화면이 자동으로 따라가요. 혼자 미리 볼 수도 있어요.</p>
@@ -100,16 +101,37 @@
       <p class="fine">헤드셋 안에서도 바꿀 수 있어요. 고개를 숙여 발밑을 보면 설정판이 나와요.</p>
     </section>
 
-    <section class="block" aria-labelledby="hHow">
-      <h2 id="hHow">사용법</h2>
+    <section class="block guest-only" aria-labelledby="hHowG">
+      <h2 id="hHowG">이렇게 보세요</h2>
+      <ol class="steps">
+        <li>화면 밝기를 올리고 <b>VR로 보기</b>를 눌러요.</li>
+        <li>폰을 <b>가로로</b> 돌려 헤드셋에 끼워요.</li>
+        <li><b>앉아서</b> 고개를 천천히 돌려요. 진행자가 시작하면 장면이 저절로 이어져요.</li>
+        <li>별이 둘로 보이면 <b>고개를 숙여 발밑을 보세요.</b> 설정판의 버튼을 1초 바라보면 눌려요.</li>
+      </ol>
+      <p class="fine">어지러우면 바로 벗고 쉬어요. 어린이는 한 번에 3분 정도가 좋아요.</p>
+    </section>
+
+    <section class="block solo-only" aria-labelledby="hHow">
+      <h2 id="hHow">사용 설명서</h2>
+      <h3 class="sub">VR로 보기</h3>
       <ol class="steps">
         <li>화면 밝기를 올리고 <b>VR로 보기</b>를 눌러요.</li>
         <li>폰을 <b>가로로</b> 돌려 헤드셋에 끼워요.</li>
         <li><b>앉아서</b> 고개를 천천히 돌리며 둘러봐요.</li>
         <li>가운데 동그라미로 별자리를 2초쯤 바라보면 별자리 그림이 그려지고, 설명이 천천히 흘러가요.</li>
-        <li>별이 둘로 보이면 <b>고개를 숙여 발밑을 보세요.</b> 설정판의 버튼을 1초 바라보면 눌려요.</li>
+        <li>별이 둘로 보이면 <b>고개를 숙여 발밑을 보세요.</b> 설정판에서 두 화면 간격과 렌즈 보정을 맞출 수 있고, 버튼은 1초 바라보면 눌려요.</li>
         <li>메뉴로 돌아오려면 설정판의 <b>메뉴로</b>를 바라보거나 화면을 두 번 톡톡 쳐요.</li>
       </ol>
+      <h3 class="sub">화면으로 보기</h3>
+      <ol class="steps">
+        <li>손가락으로 <b>끌어서</b> 하늘을 둘러보고, <b>두 손가락</b>으로 확대해요.</li>
+        <li>위의 <b>시각</b>으로 저녁 6시 30분부터 9시까지 하늘이 어떻게 변하는지 볼 수 있어요.</li>
+        <li><b>보이는 것</b>에서 별자리 선·이름, 은하수, 동서남북을 켜고 끌 수 있어요.</li>
+        <li>야간 적색 모드는 어두운 곳에서 눈이 밝기에 익은 상태를 지켜 줘요.</li>
+      </ol>
+      <h3 class="sub">쇼</h3>
+      <p class="fine" style="margin-top:0">진행자가 보여 주는 별 이야기를 혼자서 미리 볼 수 있어요. 위의 <b>쇼</b>에서 골라 시작해요.</p>
       <p class="fine">어지러우면 바로 벗고 쉬어요. 어린이는 한 번에 3분 정도가 좋아요.</p>
     </section>
 
@@ -176,6 +198,6 @@
 <script src="js/intro.js?v=9"></script>
 <script src="js/endtimer.js?v=1"></script>
 <script src="js/phonecam.js?v=1"></script>
-<script src="js/app.js?v=13"></script>
+<script src="js/app.js?v=14"></script>
 </body>
 </html>
