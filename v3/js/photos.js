@@ -1,0 +1,2 @@
+// Real photos placed on the sky at their true size (js/engine.js draws them). Images: HG731GZ via Stellarium, CC BY 3.0.
+window.SKY_PHOTOS = [{"id": "m31", "src": "assets/photos/m31.webp", "tl": [12.5152, 42.6567], "tr": [8.6791, 42.4868], "bl": [12.6537, 39.8284], "base": 0.55}, {"id": "m45", "src": "assets/photos/m45.webp", "tl": [56.8609, 25.1672], "tr": [55.5068, 24.2933], "bl": [57.8101, 23.9301], "base": 0.6}];
