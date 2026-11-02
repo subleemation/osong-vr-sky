@@ -296,6 +296,7 @@
     $('hudLive').hidden = s !== 'connected';
   }
   if (room) {
+    document.body.classList.add('guest');   // came from the presenter's QR: follow the presenter, show only 'VR로 보기'
     $('live').hidden = false; $('liveCode').textContent = room;
     $('showHint').textContent = '진행자가 쇼를 시작하면 어느 화면에 있든 바로 함께 재생돼요.';
     setLive('connecting');
