@@ -181,3 +181,14 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 22px; background: var
 #redfilter { position: fixed; inset: 0; z-index: 100; pointer-events: none; background: #ff1a00; mix-blend-mode: multiply; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* participant page: opened from the presenter's QR (?room=) follows the presenter, so only "VR로 보기" stays;
+   opened on its own it keeps everything plus the manual */
+.guest-only { display: none; }
+body.guest .guest-only { display: block; }
+body.guest .solo-only { display: none !important; }
+body.guest .actions { grid-template-columns: 1fr; }
+body.guest #bannerScreen { display: none; }
+.block h3.sub { margin: 16px 0 8px; font-family: var(--sans); font-weight: 600; font-size: 13.5px; color: var(--brass); }
+.block h3.sub:first-of-type { margin-top: 0; }
+.lede b { font-weight: 600; }
