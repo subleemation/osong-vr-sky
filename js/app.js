@@ -1325,6 +1325,11 @@
       pillText(SYNC.note || '헤드셋을 벗고 앞을 봐 주세요', vr ? cx : W / 2, (vr ? cy : H / 2) + fontPx * 1.1, vr ? rad * 1.5 : W - 40, Math.round(fontPx * 1.05) + 'px ' + BODY_FONT, fontPx, null, '#f1f2f5');
       return;
     }
+    if (NET.sim && INTRO.srv) { // preview on the presenter's laptop: what the opening looks like on the phones
+      var ist = INTRO.srv, el = (Date.now() - ist.playT0) / 1000, len = ist.len > 0 ? ist.len : 1.5;
+      var it = ist.st === 'wait' ? '폰: 오프닝 대기 중 (검은 화면)' : ist.st === 'play' && el < 0.8 + len + 3 ? '폰: 오프닝 영상 재생 중' : '';
+      if (it) pillText(it, vr ? cx : W / 2, vr ? cy - rad * 0.62 : 40, vr ? rad * 1.6 : W - 40, Math.round(fontPx * 0.85) + 'px ' + BODY_FONT, fontPx, 'rgba(14,15,20,0.92)', '#e8cf8a');
+    }
     var storyNow = !!STORY.ev;
     if (!syncActive() && !storyNow) return;
     drawCaption(view, fontPx);
@@ -1556,7 +1561,8 @@
   function introSet(state, alpha, showVid) { INTRO.state = state; INTRO.alpha = alpha; INTRO.showVid = !!showVid; }
   function introEval() {
     var s = INTRO.srv;
-    if (!s || NET.hostview) { introStopVid(false); introSet('VR_ACTIVE', 0); return; }
+    // the presenter's own view and its previews keep showing the sky; previews only say what the phones are doing
+    if (!s || NET.hostview || NET.sim) { introStopVid(false); introSet('VR_ACTIVE', 0); return; }
     if (s.st === 'wait') { introStopVid(true); INTRO.n = -1; introSet('IDLE', 1); return; }
     if (s.n !== INTRO.n) { INTRO.n = s.n; INTRO.started = false; INTRO.vidOk = false; INTRO.playFail = false; INTRO.endE = null; INTRO.skipEnd = false; }
     if (INTRO.doneN === s.n) { introStopVid(true); introSet('VR_ACTIVE', 0); return; }

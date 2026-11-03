@@ -331,20 +331,30 @@
   function renderMirror() {
     var f = $('mFrame');
     if (!prevOn && mview !== 'host') mview = 'host';
-    f.setAttribute('data-view', mview); f.classList.toggle('split', split && prevOn);
-    document.querySelectorAll('[data-view]').forEach(function (b) { if (b.tagName === 'BUTTON') { b.setAttribute('aria-pressed', !split && b.getAttribute('data-view') === mview ? 'true' : 'false'); b.disabled = !prevOn && b.getAttribute('data-view') !== 'host'; } });
-    $('hSplit').setAttribute('aria-pressed', split && prevOn ? 'true' : 'false'); $('hSplit').disabled = !prevOn;
+    // split: the presenter's view above, the participant view (VR or screen mode) below
+    var sp = split && prevOn, second = mview === 'screen' ? 'screen' : 'vr';
+    f.setAttribute('data-view', mview); f.setAttribute('data-second', second); f.classList.toggle('split', sp);
+    document.querySelectorAll('[data-view]').forEach(function (b) {
+      if (b.tagName !== 'BUTTON') return;
+      var v = b.getAttribute('data-view');
+      b.setAttribute('aria-pressed', (sp ? v === second : v === mview) ? 'true' : 'false'); b.disabled = !prevOn && v !== 'host';
+    });
+    $('hSplit').setAttribute('aria-pressed', sp ? 'true' : 'false'); $('hSplit').disabled = !prevOn;
     $('hPrevToggle').setAttribute('aria-pressed', prevOn ? 'true' : 'false');
     // a preview is only drawn while it is on screen, so the laptop does not draw three skies at once
-    var showVR = prevOn && (split || mview === 'vr'), showSC = prevOn && (split || mview === 'screen');
+    var showVR = prevOn && (sp ? second === 'vr' : mview === 'vr'), showSC = prevOn && (sp ? second === 'screen' : mview === 'screen');
     var vrSrc = showVR ? pageUrl('&sim=vr') : 'about:blank', scSrc = showSC ? pageUrl('&sim=screen') : 'about:blank';
     if ($('pVR').getAttribute('src') !== vrSrc) $('pVR').setAttribute('src', vrSrc);
     if ($('pSC').getAttribute('src') !== scSrc) $('pSC').setAttribute('src', scSrc);
   }
   document.querySelectorAll('button[data-view]').forEach(function (b) {
-    b.addEventListener('click', function () { mview = b.getAttribute('data-view'); split = false; try { localStorage.setItem('osong-mview', mview); } catch (e) {} renderMirror(); });
+    b.addEventListener('click', function () {
+      mview = b.getAttribute('data-view');
+      if (mview === 'host') split = false; // in split view the VR / screen buttons pick the lower half
+      try { localStorage.setItem('osong-mview', mview); } catch (e) {} renderMirror();
+    });
   });
-  $('hSplit').addEventListener('click', function () { split = !split; renderMirror(); });
+  $('hSplit').addEventListener('click', function () { split = !split; if (split && mview === 'host') mview = 'vr'; renderMirror(); });
   $('hPrevToggle').addEventListener('click', function () { prevOn = !prevOn; try { localStorage.setItem('osong-prev', prevOn ? 'on' : 'off'); } catch (e) {} renderMirror(); });
   renderMirror();
 
