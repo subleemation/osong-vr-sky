@@ -194,13 +194,8 @@ input[type=range] { accent-color: var(--star); }
 .pill { border-radius: 999px; }
 body.intro-on #info, body.intro-on #hint, body.intro-on #clockHud { visibility: hidden; }
 body.intro-on #backBtn { opacity: 0.25; }
-/* date & place picker */
+/* reference sky line */
 .where { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
-input[type=date] {
-  appearance: none; border-radius: 10px; padding: 7px 10px; font-size: 14px; font-family: var(--font-body);
-  border: 1px solid var(--line); background: var(--deep); color: var(--ink); color-scheme: dark; min-height: 36px;
-}
-.chips.locked { opacity: 0.45; pointer-events: none; }
 /* quiz (screen mode; in VR the cards are drawn in the sky) */
 #quizBox { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); z-index: 6; pointer-events: auto;
   background: rgba(14, 15, 20, 0.94); border: 1px solid rgba(232, 207, 138, 0.35); border-radius: 14px; padding: 14px 16px; }

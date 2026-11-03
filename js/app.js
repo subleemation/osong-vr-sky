@@ -130,26 +130,27 @@
 
   // ---------- state ----------
   var st = {
-    minutes: 90, speed: 0, lim: 4.6,
+    minutes: 90, speed: 1, lim: 4.6,
     show: { lines: true, names: true, stars: true, mw: true, dirs: true, art: true, trails: false },
     ipdAdj: 0, warp: 0.3, fov: 95,
     mode: 'menu', // menu | vr | screen
     yaw: 150, pitch: 30, zoomFov: 75,
     sensor: false, sensorSeen: false, absolute: false, headingOffset: 0, compassDone: false,
     devQ: null, cam: null,
-    sky: null // this phone's own date/place choice (null = the event night)
+    sky: null // the reference sky: the moment this page opened, in Cheongju (set just below)
   };
+  st.sky = C.refSky(Date.now()); st.minutes = C.minutesAt(st.sky, Date.now());
   try {
     var saved = JSON.parse(localStorage.getItem('osong-vr-settings') || 'null');
-    if (saved) { if (C.skyOk(saved.sky)) st.sky = saved.sky; st.ipdAdj = saved.ipdAdj || 0; st.warp = saved.warp != null ? saved.warp : 0.3; st.fov = saved.fov || 95; st.headingOffset = saved.headingOffset || 0; }
+    if (saved) { st.ipdAdj = saved.ipdAdj || 0; st.warp = saved.warp != null ? saved.warp : 0.3; st.fov = saved.fov || 95; st.headingOffset = saved.headingOffset || 0; }
   } catch (e) {}
   function saveSettings() {
-    try { localStorage.setItem('osong-vr-settings', JSON.stringify({ sky: st.sky, ipdAdj: st.ipdAdj, warp: st.warp, fov: st.fov, headingOffset: st.headingOffset })); } catch (e) {}
+    try { localStorage.setItem('osong-vr-settings', JSON.stringify({ ipdAdj: st.ipdAdj, warp: st.warp, fov: st.fov, headingOffset: st.headingOffset })); } catch (e) {}
   }
 
   // ---------- time helpers ----------
-  function clockText(min) { // minutes after 18:00, through the night until 06:00
-    var t = (18 * 60 + Math.round(min)) % 1440;
+  function clockText(min) { // minutes after 18:00 (−720 … +720: 06:00 to 06:00 the next morning)
+    var t = ((18 * 60 + Math.round(min)) % 1440 + 1440) % 1440;
     var h = Math.floor(t / 60), m = t % 60;
     return (h < 12 ? '오전 ' : '오후 ') + (h % 12 === 0 ? 12 : h % 12) + ':' + (m < 10 ? '0' : '') + m;
   }
@@ -541,7 +542,7 @@
   function trailTick(on) {
     var m = st.minutes, now = performance.now(), dt = (now - (TRAIL.at || now)) / 1000; TRAIL.at = now;
     if (!on) { TRAIL.lo = TRAIL.hi = TRAIL.last = null; return; }
-    var speed = syncActive() ? SYNC.speed : st.speed, flow = Math.abs(speed) * dt / 60; // minutes the clock may run in this frame
+    var speed = hostClock() ? SYNC.speed : st.speed, flow = Math.abs(speed) * dt / 60; // minutes the clock may run in this frame
     if (TRAIL.last == null || Math.abs(m - TRAIL.last) > 20 + flow * 1.5 || TRAIL.sky !== skyKey) { TRAIL.lo = TRAIL.hi = m; TRAIL.sky = skyKey; }
     TRAIL.lo = Math.min(TRAIL.lo, m); TRAIL.hi = Math.max(TRAIL.hi, m); TRAIL.last = m;
   }
@@ -844,8 +845,7 @@
     { id: 'fov-', x: -0.26, y: -0.09, w: 0.17, h: 0.15, label: '−', rep: true },
     { id: 'fov+', x: 0.26, y: -0.09, w: 0.17, h: 0.15, label: '+', rep: true },
     { id: 'south', x: -0.5, y: -0.31, w: 0.62, h: 0.16, label: '이 방향이 남쪽' },
-    { id: 'menu', x: 0.18, y: -0.31, w: 0.3, h: 0.16, label: '메뉴로' },
-    { id: 'art', x: 0.56, y: -0.31, w: 0.34, h: 0.16, label: '그림 끄기' }
+    { id: 'menu', x: 0.37, y: -0.31, w: 0.62, h: 0.16, label: '메뉴로' }
   ];
   var ROWS = [
     { y: 0.31, name: '두 화면 간격', val: function () { return st.ipdAdj === 0 ? '기본' : (st.ipdAdj > 0 ? '+' : '') + st.ipdAdj; } },
@@ -885,12 +885,6 @@
       saveSettings();
       return;
     } else if (id === 'menu') { leave(); return; }
-    else if (id === 'art') {
-      if (NET.room && SYNC.has && SYNC.art != null) { PANEL.toast = '지금은 진행자가 정해요'; PANEL.toastT = 1.6; return; }
-      st.show.art = !st.show.art; artSlow = false; syncArtUi();
-      PANEL.toast = st.show.art ? '별자리 그림을 켰어요' : '별자리 그림을 껐어요'; PANEL.toastT = 1.6;
-      return;
-    }
     else changed = false;
     if (changed) {
       $('ipd').value = st.ipdAdj; $('warp').value = st.warp; $('fov').value = st.fov;
@@ -1005,7 +999,7 @@
     artEma = artEma ? artEma * 0.9 + dt * 0.1 : dt;
     if (artEma > 0.045) {
       artSlowT += dt;
-      if (artSlowT > 6) { artSlow = true; st.show.art = false; syncArtUi(); PANEL.toast = '폰이 느려서 별자리 그림을 껐어요'; PANEL.toastT = 2.5; }
+      if (artSlowT > 6) { artSlow = true; PANEL.toast = '폰이 느려서 별자리 그림을 껐어요'; PANEL.toastT = 2.5; }
     } else artSlowT = 0;
   }
   var ARTF = {};
@@ -1210,7 +1204,7 @@
   // ---------- live link to the sync server (Cloudflare Worker), spots ----------
   var SERVER = window.SYNC_SERVER || 'wss://osong-vr-sync.lrwe36.workers.dev'; // js/config.js
   var NET = { room: null, status: 'off', hostOpen: false, ws: null, gotState: false };
-  var SYNC = { has: false, phase: 'idle', base: 90, speed: 0, at: 0, spot: null, note: '', hold: false, timer: null, plan: null, view: null, story: null, art: null };
+  var SYNC = { has: false, phase: 'idle', base: 90, speed: 0, at: 0, spot: null, note: '', hold: false, view: null, story: null, art: null };
   (function () {
     var q = new URLSearchParams(location.search), r = (q.get('r') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 24);
     var sv = q.get('server');
@@ -1221,13 +1215,6 @@
   })();
   function followOn() { return !NET.hostview && syncActive() && !SYNC.hold && SYNC.view && SYNC.view.on && !SYNC.story; }
 
-  function phaseName(p) { return p === 'guide' ? '안내 시간' : p === 'free' ? '자유 관찰' : p === 'break' ? '쉬는 시간' : p === 'end' ? '끝' : ''; }
-  function fmtTime(ms) { var s = Math.max(0, Math.ceil(ms / 1000)), m = Math.floor(s / 60), x = s % 60; return m + ':' + (x < 10 ? '0' : '') + x; }
-  function timerRemaining(tm) {
-    if (!tm) return 0;
-    if (tm.paused) return tm.rem;
-    return Math.max(0, tm.endLocal - Date.now());
-  }
 
   // spots the host can point everyone at
   var SPOTS = [];
@@ -1272,16 +1259,13 @@
     SYNC.has = true; SYNC.phase = s.phase || 'idle';
     SYNC.base = s.time; SYNC.speed = s.speed || 0; SYNC.at = Date.now();
     SYNC.spot = s.spot ? spotById(s.spot) : null;
-    SYNC.note = s.note || ''; SYNC.hold = !!s.hold; SYNC.plan = s.plan || null;
-    if (s.timer) {
-      SYNC.timer = { rem: s.timer.rem, total: s.timer.total, label: s.timer.label || '', paused: !!s.timer.paused, endLocal: Date.now() + s.timer.rem };
-    } else SYNC.timer = null;
+    SYNC.note = s.note || ''; SYNC.hold = !!s.hold;
     renderNetChip();
   }
-  function syncActive() { return NET.room && SYNC.has && SYNC.phase !== 'idle' && SYNC.phase !== 'end'; }
+  function syncActive() { return !!(NET.room && SYNC.has); }       // connected: the presenter steers
+  function hostClock() { return syncActive() && !!SYNC.sky; }      // the presenter has set the shared sky and clock
   function syncMinutes() {
-    var m = SYNC.base + (Date.now() - SYNC.at) / 60000 * SYNC.speed;
-    return ((m % 720) + 720) % 720;
+    return C.wrapMin(SYNC.base + (Date.now() - SYNC.at) / 60000 * SYNC.speed);
   }
   function renderNetChip() {
     var chip = $('netChip'); if (!chip) return;
@@ -1291,23 +1275,21 @@
     if (NET.status !== 'ok' && !SYNC.has) t = '진행자와 연결하는 중…';
     else if (SYNC.story && showById(SYNC.story.show)) t = '진행자와 함께 이야기를 보는 중';
     else if (!SYNC.has) t = '진행자를 기다리는 중이에요';
-    else if (SYNC.phase === 'idle' || SYNC.phase === 'end') t = SYNC.phase === 'end' ? '프로그램이 끝났어요. 자유롭게 봐요' : '진행자와 연결됐어요. 시작 신호를 기다려요';
-    else t = '진행자와 함께 보는 중 · ' + phaseName(SYNC.phase) + (SYNC.timer ? ' · ' + fmtTime(timerRemaining(SYNC.timer)) : '') + (followOn() ? ' · 진행자 화면을 따라가요' : '');
+    else t = '진행자와 연결됐어요' + (followOn() ? ' · 진행자 화면을 따라가요' : '');
     if (NET.status === 'lost') t += ' (연결이 끊겨도 계속 볼 수 있어요)';
     chip.textContent = t;
-    $('time').disabled = syncActive();
   }
   var netN = 0;
   function netTick() { // returns true while the host is steering the clock
     if (!NET.room) return false;
-    var on = syncActive();
+    var on = hostClock();
     if (on) st.minutes = syncMinutes();
     if (++netN % 20 === 0) { renderNetChip(); if (on) syncTime(); }
     return on;
   }
 
   // guidance cue for the target the host picked: ring when in view, arrow at the edge otherwise
-  function guideCons() { return (st.mode !== 'menu' && syncActive() && SYNC.phase === 'guide' && SYNC.spot && SYNC.spot.cons) || null; }
+  function guideCons() { return (st.mode !== 'menu' && syncActive() && SYNC.spot && SYNC.spot.cons) || null; }
   function cueText(txt, x, y, fontPx, color) {
     var c = ctx; c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
     var w = c.measureText(txt).width;
@@ -1348,11 +1330,7 @@
     drawCaption(view, fontPx);
     // top info: phase + timer
     var topY = vr ? cy - rad * 0.82 : 84;
-    var parts = storyNow ? [] : [phaseName(SYNC.phase)];
-    if (followOn() && !vr) parts.push('진행자 화면을 따라가는 중');
-    var tm = SYNC.timer, low = false;
-    if (tm) { var rem = timerRemaining(tm); parts.push((tm.label ? tm.label + ' ' : '') + fmtTime(rem) + (tm.paused ? ' (멈춤)' : '')); low = !tm.paused && rem < 30000; }
-    var txt = parts.join(' · ');
+    var low = false, txt = !storyNow && followOn() && !vr ? '진행자 화면을 따라가는 중' : '';
     if (txt) {
     c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
     var tw = c.measureText(txt).width;
@@ -1362,7 +1340,7 @@
     // host message
     if (SYNC.note) pillText(SYNC.note, vr ? cx : W / 2, vr ? cy + rad * 0.44 : H - 70, vr ? rad * 1.5 : W - 40, Math.round(fontPx * 1.05) + 'px ' + BODY_FONT, fontPx, 'rgba(232,207,138,0.95)', '#2a1d00');
     // target cue
-    var sp = SYNC.phase === 'guide' ? SYNC.spot : null, e, label, cam = st.cam;
+    var sp = SYNC.spot, e, label, cam = st.cam;
     if (storyNow) {
       if (!vr) return;                                   // screen mode is turned for you
       e = STORY.ev.endDir; label = STORY.ev.scene.title || '여기를 봐요';
@@ -1685,7 +1663,7 @@
     if (STORY.ev) { st.minutes = STORY.ev.minutes; synced = true; }
     if (!synced && st.speed > 0 && st.mode !== 'menu') {
       st.minutes += dt * st.speed / 60;
-      if (st.minutes >= 720) st.minutes -= 720;
+      st.minutes = C.wrapMin(st.minutes);
       syncTime();
     }
     if (followOn() && st.mode === 'screen') { st.yaw = SYNC.view.yaw; st.pitch = SYNC.view.pitch; st.zoomFov = SYNC.view.fov; }
@@ -1759,7 +1737,7 @@
   function vrLookTarget() {
     if (STORY.ev) return { key: 'story' + SYNC.story.show + ':' + STORY.ev.i, az: C.enuToAltAz(STORY.ev.endDir).az };
     if (followOn()) return { key: 'view' + Math.round(SYNC.view.yaw), az: SYNC.view.yaw };
-    var sp = syncActive() && SYNC.phase === 'guide' ? SYNC.spot : null;
+    var sp = syncActive() ? SYNC.spot : null;
     if (sp) return { key: 'spot' + sp.id, az: spotAltAz(sp, st.minutes).az };
     return null;
   }
@@ -1779,7 +1757,7 @@
   // the story plays on its own night; otherwise the presenter's choice, then this phone's own
   function activeSky() {
     if (STORY.ev) return null;
-    if (SYNC.has && SYNC.sky) return SYNC.sky;
+    if (hostClock()) return SYNC.sky;
     return st.sky;
   }
   function baseSep() { return 360; } // ~63 mm on most phones (5.6-6 CSS px per mm)
@@ -1788,68 +1766,16 @@
   function syncTime() {
     var t = clockText(st.minutes);
     $('clockMenu').textContent = t; $('clockHud').textContent = t;
-    if (Math.abs(+$('time').value - st.minutes) >= 5) $('time').value = Math.round(st.minutes / 5) * 5;
     if (frame) $('skyState').textContent = sunState(frame.sunAlt);
   }
-  $('time').addEventListener('input', function () { st.minutes = +this.value; computeFrame(); syncTime(); });
-  function chipGroup(attr, apply) {
-    var chips = document.querySelectorAll('[data-' + attr + ']');
-    chips.forEach(function (ch) {
-      ch.addEventListener('click', function () {
-        chips.forEach(function (o) { o.setAttribute('aria-pressed', o === ch ? 'true' : 'false'); });
-        apply(ch.getAttribute('data-' + attr));
-      });
-    });
-  }
-  chipGroup('speed', function (v) { st.speed = +v; });
-  // ---- date & place ----
-  function pad2(n) { return (n < 10 ? '0' : '') + n; }
-  function localDate(tz) { var d = new Date(Date.now() + tz * 3600000); return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()); }
-  function pickSky(date, place) {
-    var cur = st.sky || C.EVENT, p;
-    date = date || cur.date; place = place || cur.place || 'osong';
-    if (place === 'here') {
-      if (cur.place === 'here') p = { name: '내 위치', lat: cur.lat, lon: cur.lon, tz: cur.tz };
-      else { locateMe(date); return; }
-    } else p = C.PLACES[place] || C.PLACES.osong;
-    var k = { date: date, place: place, name: p.name, lat: p.lat, lon: p.lon, tz: p.tz };
-    st.sky = date === C.EVENT.date && place === 'osong' ? null : k;
-    saveSettings(); renderSkyWhere();
-  }
-  function locateMe(date) {
-    if (!navigator.geolocation) { note('이 브라우저는 위치를 알려 주지 않아요.'); return; }
-    $('skyWhere').textContent = '위치를 찾는 중…';
-    navigator.geolocation.getCurrentPosition(function (pos) {
-      st.sky = { date: date, place: 'here', name: '내 위치', lat: Math.round(pos.coords.latitude * 1000) / 1000, lon: Math.round(pos.coords.longitude * 1000) / 1000, tz: -new Date().getTimezoneOffset() / 60 };
-      saveSettings(); renderSkyWhere();
-    }, function () { note('위치를 가져오지 못했어요. 위치 권한을 허용하거나 다른 장소를 골라 주세요.'); renderSkyWhere(); }, { timeout: 10000, maximumAge: 600000 });
-  }
+  // ---- which sky: the presenter's, or right now in Cheongju (no per-phone choice) ----
   function renderSkyWhere() {
-    var shown = activeSky() || C.EVENT, mine = st.sky || C.EVENT, locked = !!(SYNC.has && SYNC.sky) || !!STORY.ev;
-    var d = shown.date.split('-');
-    $('skyWhere').textContent = +d[0] + '. ' + +d[1] + '. ' + +d[2] + ' · ' + (shown.name || (C.PLACES[shown.place] || C.PLACES.osong).name);
-    $('skyEvent').setAttribute('aria-pressed', mine.date === C.EVENT.date ? 'true' : 'false');
-    $('skyToday').setAttribute('aria-pressed', mine.date !== C.EVENT.date && mine.date === localDate(mine.tz) ? 'true' : 'false');
-    if (document.activeElement !== $('skyDate')) $('skyDate').value = mine.date;
-    document.querySelectorAll('[data-place]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-place') === (mine.place || 'osong') ? 'true' : 'false'); });
-    $('skyLock').hidden = !locked;
-    $('skyLock').textContent = STORY.ev ? '이야기는 관측회 날(2026년 11월 1일) 오송 하늘로 진행돼요.' : '진행자가 고른 날짜와 장소를 보여 주고 있어요.';
-    document.querySelectorAll('#hTime .chips').forEach(function (c) { c.classList.toggle('locked', locked); });
-    canvas.setAttribute('aria-label', $('skyWhere').textContent + ' 저녁 밤하늘');
+    var k = activeSky() || C.EVENT, d = k.date.split('-');
+    var t = (k.name || '청주') + ' · ' + +d[0] + '. ' + +d[1] + '. ' + +d[2] + (STORY.ev ? ' (이야기)' : hostClock() ? ' · 진행자 시각' : ' · 지금');
+    $('skyWhere').textContent = t;
+    canvas.setAttribute('aria-label', t + ' 밤하늘');
   }
-  $('skyEvent').addEventListener('click', function () { pickSky(C.EVENT.date, null); });
-  $('skyToday').addEventListener('click', function () { pickSky(localDate((st.sky || C.EVENT).tz), null); });
-  $('skyDate').addEventListener('change', function () { if (/^\d{4}-\d{2}-\d{2}$/.test(this.value)) pickSky(this.value, null); });
-  document.querySelectorAll('[data-place]').forEach(function (b) { b.addEventListener('click', function () { pickSky(null, b.getAttribute('data-place')); }); });
   renderSkyWhere();
-  chipGroup('lim', function (v) { st.lim = +v; });
-  document.querySelectorAll('[data-opt]').forEach(function (ch) {
-    ch.addEventListener('click', function () {
-      var k = ch.getAttribute('data-opt'); st.show[k] = !st.show[k];
-      ch.setAttribute('aria-pressed', st.show[k] ? 'true' : 'false');
-      if (k === 'art') { artSlow = false; syncArtUi(); }
-    });
-  });
   function syncVrLabels() {
     $('ipdVal').textContent = st.ipdAdj === 0 ? '기본' : (st.ipdAdj > 0 ? '넓게 +' : '좁게 ') + st.ipdAdj;
     $('warpVal').textContent = st.warp < 0.1 ? '끔' : st.warp < 0.25 ? '약하게' : st.warp < 0.45 ? '보통' : '강하게';
@@ -1874,10 +1800,6 @@
       }, 300);
     });
   });
-  function syncArtUi() {
-    for (var i = 0; i < BTNS.length; i++) if (BTNS[i].id === 'art') BTNS[i].label = st.show.art ? '그림 끄기' : '그림 켜기';
-    var ch = document.querySelector('[data-opt="art"]'); if (ch) ch.setAttribute('aria-pressed', st.show.art ? 'true' : 'false');
-  }
   function note(t) { var n = $('sensorNote'); n.textContent = t; n.hidden = !t; }
 
   function enter(mode) {
@@ -2034,5 +1956,5 @@
     });
   }
   requestAnimationFrame(loop);
-  window.__sky = { intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, vrt: VRT, setRaw: function (cam) { rawCam = cam; st.sensorSeen = true; }, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
+  window.__sky = { intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, vrt: VRT, opt: function (k) { return opt(k); }, trail: function () { return [TRAIL.lo, TRAIL.hi]; }, story: function () { return STORY.ev ? { i: STORY.ev.i } : null; }, setRaw: function (cam) { rawCam = cam; st.sensorSeen = true; }, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
 })();

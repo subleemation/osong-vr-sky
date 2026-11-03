@@ -34,9 +34,9 @@ export class Room {
   async save(s) { await this.ctx.storage.put('s', s); }
 
   minutes(s) {
-    // minutes after 18:00, over the whole night (18:00–06:00); time can run backwards too
+    // minutes after 18:00 of the sky's date, over a whole day (−720 … +720: 06:00 to 06:00); time can run backwards too
     const m = s.time + ((Date.now() - s.timeAt) / 60000) * s.speed;
-    return ((m % 720) + 720) % 720;
+    return ((m + 720) % 1440 + 1440) % 1440 - 720;
   }
   pack(s, admin) {
     const tm = s.timer;
@@ -203,8 +203,8 @@ export class Room {
       case 'pause': if (s.timer) { if (s.timer.paused) { s.timer.paused = false; s.timer.end = now + s.timer.rem; } else { s.timer.rem = Math.max(0, s.timer.end - now); s.timer.paused = true; } } break;
       case 'phase': if (!s.plan && (m.v === 'guide' || m.v === 'free')) { s.phase = m.v; if (m.v === 'free') s.spot = null; } break;
       case 'spot': s.spot = typeof m.v === 'string' ? m.v.slice(0, 12) : null; if (s.spot && !s.plan && s.phase !== 'guide') s.phase = 'guide'; break;
-      case 'time': s.time = this.clip(m.v, 0, 720, 90); s.timeAt = now; break;
-      case 'step': s.time = ((this.minutes(s) + this.clip(m.v, -720, 720, 0)) % 720 + 720) % 720; s.timeAt = now; break; // jump forward / back
+      case 'time': s.time = this.clip(m.v, -720, 720, 90); s.timeAt = now; break;
+      case 'step': s.time = ((this.minutes(s) + this.clip(m.v, -720, 720, 0) + 720) % 1440 + 1440) % 1440 - 720; s.timeAt = now; break; // jump forward / back
       case 'speed': s.time = this.minutes(s); s.timeAt = now; s.speed = [-600, -60, -10, 0, 1, 10, 60, 600].includes(Number(m.v)) ? Number(m.v) : 0; break;
       case 'show': { // what every phone draws: true / false, or null to leave it to each phone
         const keys = ['lines', 'names', 'stars', 'art', 'trails', 'mw', 'dirs'];

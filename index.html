@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0c0d11">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/app.css?v=5">
+<link rel="stylesheet" href="css/app.css?v=6">
 
 </head>
 <body>
@@ -20,7 +20,7 @@
   <div class="wrap">
     <header>
       <h1>별이 빛나는 밤에</h1>
-      <p class="sub">비가 와도 괜찮아요. 오늘 밤 오송 하늘에 뜰 별과 별자리, 토성을 VR로 먼저 만나요.</p>
+      <p class="sub">비가 와도 괜찮아요. 지금 청주 하늘에 뜬 별과 별자리를 VR로 만나요.</p>
     </header>
 
     <div class="go">
@@ -32,56 +32,12 @@
     <p class="netchip" id="netChip" hidden></p>
 
     <section class="card" aria-labelledby="hTime">
-      <h2 id="hTime">언제 하늘을 볼까요?</h2>
+      <h2 id="hTime">지금 하늘</h2>
       <div class="row">
-        <div class="lab"><span>날짜와 장소</span><span class="where" id="skyWhere">2026. 11. 1 · 오송호수공원</span></div>
-        <div class="chips" role="group" aria-label="날짜">
-          <button class="chip" type="button" id="skyEvent" aria-pressed="true">관측회 날 (11월 1일)</button>
-          <button class="chip" type="button" id="skyToday" aria-pressed="false">오늘 밤</button>
-          <input type="date" id="skyDate" value="2026-11-01" min="1900-01-01" max="2100-12-31" aria-label="다른 날짜 고르기">
-        </div>
-        <div class="chips" role="group" aria-label="장소">
-          <button class="chip" type="button" data-place="osong" aria-pressed="true">오송호수공원</button>
-          <button class="chip" type="button" data-place="seoul" aria-pressed="false">서울</button>
-          <button class="chip" type="button" data-place="jeju" aria-pressed="false">제주</button>
-          <button class="chip" type="button" data-place="here" aria-pressed="false">내 위치</button>
-        </div>
-        <p class="skystate" id="skyLock" hidden>진행자가 고른 날짜와 장소를 보여 주고 있어요.</p>
-      </div>
-      <div class="row">
-        <div class="lab"><span>시각</span><span class="clock" id="clockMenu">오후 7:30</span></div>
-        <input type="range" id="time" min="0" max="720" step="5" value="90" aria-label="시각 선택 (오후 6시부터 오전 6시까지)">
+        <div class="lab"><span class="where" id="skyWhere">청주 · 지금</span><span class="clock" id="clockMenu">오후 7:30</span></div>
         <div class="skystate" id="skyState"></div>
       </div>
-      <div class="row">
-        <span class="lab"><span>시간 흐르기</span></span>
-        <div class="chips" role="group" aria-label="시간 흐르기">
-          <button class="chip" type="button" data-speed="0" aria-pressed="true">멈춤</button>
-          <button class="chip" type="button" data-speed="1" aria-pressed="false">실제 속도</button>
-          <button class="chip" type="button" data-speed="60" aria-pressed="false">빠르게 (1분 = 1시간)</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="card" aria-labelledby="hShow">
-      <h2 id="hShow">무엇을 보여줄까요?</h2>
-      <div class="row">
-        <span class="lab"><span>하늘 밝기 (별 개수)</span></span>
-        <div class="chips" role="group" aria-label="하늘 밝기">
-          <button class="chip" type="button" data-lim="3.6" aria-pressed="false">도시</button>
-          <button class="chip" type="button" data-lim="4.6" aria-pressed="true">오송 공원</button>
-          <button class="chip" type="button" data-lim="6.2" aria-pressed="false">깊은 시골</button>
-        </div>
-      </div>
-      <div class="chips" role="group" aria-label="표시할 것">
-        <button class="chip" type="button" data-opt="art" aria-pressed="true">별자리 그림</button>
-        <button class="chip" type="button" data-opt="lines" aria-pressed="true">별자리 선</button>
-        <button class="chip" type="button" data-opt="names" aria-pressed="true">별자리 이름</button>
-        <button class="chip" type="button" data-opt="stars" aria-pressed="true">별 이름</button>
-        <button class="chip" type="button" data-opt="mw" aria-pressed="true">은하수</button>
-        <button class="chip" type="button" data-opt="dirs" aria-pressed="true">동서남북</button>
-        <button class="chip" type="button" data-opt="trails" aria-pressed="false">별의 궤적</button>
-      </div>
+      <p class="sub" style="font-size:14px">앱을 켠 지금 이 순간, 청주에서 보이는 하늘이에요. 진행자와 연결되면 진행자가 고른 시각과 보여 줄 것을 함께 봐요.</p>
     </section>
 
     <section class="card" aria-labelledby="hVR">
@@ -156,14 +112,14 @@
 <div id="rotate" hidden>폰을 <br>가로로 돌려주세요</div>
 
 <script src="js/config.js?v=1"></script>
-<script src="js/sky-data.js?v=5"></script>
-<script src="story.js?v=5"></script>
+<script src="js/sky-data.js?v=6"></script>
+<script src="story.js?v=6"></script>
 <script src="vendor/astronomy.browser.min.js?v=2.1.19"></script>
-<script src="js/sky-core.js?v=5"></script>
+<script src="js/sky-core.js?v=6"></script>
 <script src="js/photos.js?v=1"></script>
-<script src="js/skygl.js?v=5"></script>
+<script src="js/skygl.js?v=6"></script>
 <script src="quiz.js?v=1"></script>
-<script src="js/app.js?v=5"></script>
+<script src="js/app.js?v=6"></script>
 
 <script src="art.js" async></script>
 </body>
