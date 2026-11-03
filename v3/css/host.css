@@ -112,3 +112,5 @@ select { appearance: none; background: var(--ink-2); color: var(--paper); border
 .endtimer-block .transport { flex-wrap: wrap; }
 .et-min { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--paper-2); }
 .et-min input { width: 52px; background: var(--ink-2); color: var(--paper); border: 1px solid var(--rule-2); padding: 7px 6px; font: inherit; font-family: var(--mono); font-size: 14px; text-align: center; }
+.date-block .transport { flex-wrap: wrap; }
+.date-in { background: var(--ink-2); color: var(--paper); border: 1px solid var(--rule-2); padding: 7px 8px; font-family: var(--mono); font-size: 14px; color-scheme: dark; }

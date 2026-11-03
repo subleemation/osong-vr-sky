@@ -192,3 +192,13 @@ body.guest #bannerScreen { display: none; }
 .block h3.sub { margin: 16px 0 8px; font-family: var(--sans); font-weight: 600; font-size: 13.5px; color: var(--brass); }
 .block h3.sub:first-of-type { margin-top: 0; }
 .lede b { font-weight: 600; }
+
+/* date of the sky (js/skytime.js) */
+.daterow { display: flex; gap: 8px; align-items: stretch; }
+.daterow input[type=date] {
+  flex: 1; min-width: 0; appearance: none; -webkit-appearance: none; background: transparent; color: var(--paper);
+  border: 1px solid var(--rule); border-radius: 0; padding: 10px 12px; font-family: var(--mono); font-size: 16px; color-scheme: dark;
+}
+.daterow input[type=date]:focus { outline: 1px solid var(--brass); outline-offset: 1px; }
+.daterow .btn-line { flex: none; padding: 0 16px; }
+.hud-clock .date { color: var(--muted); margin: 0 6px 0 0; }
