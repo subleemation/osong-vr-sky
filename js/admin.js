@@ -10,7 +10,7 @@
     skyKey = key;
   }
   var $ = function (id) { return document.getElementById(id); };
-  var SERVER = 'wss://osong-vr-sync.lrwe36.workers.dev';
+  var SERVER = window.SYNC_SERVER || 'wss://osong-vr-sync.lrwe36.workers.dev'; // js/config.js
   var DEFAULT_ROOM = 'b32226cf';
   var q = new URLSearchParams(location.search);
   var sv = q.get('server');

@@ -29,7 +29,9 @@
 
 ## 배포
 1. **사이트**: GitHub Pages(브랜치 `main`, 폴더 `/`). 휴대폰 기울기 센서는 HTTPS에서만 동작해요.
-2. **동기화 서버**: `wrangler deploy` (Cloudflare 계정 필요). 진행자 비밀번호는 없앴어요. 방 코드(`?r=`)가 같은 사람끼리 같은 하늘을 봐요.
+2. **동기화 서버**: 방 코드(`?r=`)가 같은 사람끼리 같은 하늘을 봐요. 진행자 비밀번호는 없어요. 서버 코드는 `worker.js` 하나고, 두 곳 중 하나에서 돌려요.
+   - **Render**: `server/server.mjs`가 `worker.js`를 Node에서 그대로 돌려요. `render.yaml` 블루프린트로 배포하고, `main`에 푸시하면 자동으로 다시 배포돼요. 무료 서버는 15분 동안 아무도 안 쓰면 잠들어서, **시작 몇 분 전에 진행자 화면을 먼저 열어 두세요**(처음 깨어날 때 최대 1분).
+   - **Cloudflare (이 저장소 기본값)**: `npx wrangler deploy`. Render를 쓰려면 `js/config.js`의 주소를 Render 주소로 바꿔요.
    - 날짜·장소 동기화(`sky` 명령)는 이번에 서버에 추가했어요. **서버를 다시 배포해야** 진행자가 고른 날짜가 휴대폰에 전달돼요. 배포 전에도 나머지는 그대로 동작하고, 참가자가 각자 메뉴에서 날짜를 고를 수는 있어요.
    - 서버 주소는 `js/app.js`, `js/admin.js`의 `SERVER`예요. 허용 출처는 `worker.js`의 `ALLOWED`(*.github.io, localhost)예요.
 
@@ -40,7 +42,7 @@
 ## 로컬에서 시험하기
 ```
 python3 -m http.server 8765                      # 저장소 루트에서
-npx wrangler dev --port 8787 --local             # 다른 터미널
+npm install --prefix server && PORT=8787 node server/server.mjs   # 다른 터미널 (또는 npx wrangler dev --port 8787)
 ```
 `http://localhost:8765/admin.html?server=ws://localhost:8787` 와 `http://localhost:8765/?r=<방 코드>&server=ws://localhost:8787`.
 
@@ -60,7 +62,9 @@ css/                     디자인
 vendor/                  qrcode-generator (MIT), astronomy-engine 2.1.19 (MIT)
 assets/                  은하수 사진 지도, 토성 사진, 오프닝 영상
 tools/                   은하수·토성 이미지 만드는 스크립트
-worker.js, wrangler.toml 동기화 서버
+worker.js, wrangler.toml 동기화 서버 (Cloudflare)
+server/, render.yaml     같은 서버를 Render(Node)에서 돌리는 어댑터
+js/config.js             동기화 서버 주소
 ```
 `v2/`, `v3/`는 Osong-vr 쇼 방식으로 만든 예전 버전이에요. 같은 앱이 https://github.com/leedohyang15-design/Osong-vr 에도 있어요(예전 진행자 쇼 버전은 그 저장소의 `osong-1101` 브랜치).
 

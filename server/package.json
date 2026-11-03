@@ -1,0 +1,10 @@
+{
+  "name": "osong-vr-sync",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Sync server for 별이 빛나는 밤에 VR on Render: runs ../worker.js (the Cloudflare Room) on Node",
+  "main": "server.mjs",
+  "scripts": { "start": "node server.mjs" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" }
+}

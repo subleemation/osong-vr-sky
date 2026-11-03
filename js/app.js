@@ -1208,7 +1208,7 @@
   }
 
   // ---------- live link to the sync server (Cloudflare Worker), spots ----------
-  var SERVER = 'wss://osong-vr-sync.lrwe36.workers.dev';
+  var SERVER = window.SYNC_SERVER || 'wss://osong-vr-sync.lrwe36.workers.dev'; // js/config.js
   var NET = { room: null, status: 'off', hostOpen: false, ws: null, gotState: false };
   var SYNC = { has: false, phase: 'idle', base: 90, speed: 0, at: 0, spot: null, note: '', hold: false, timer: null, plan: null, view: null, story: null, art: null };
   (function () {

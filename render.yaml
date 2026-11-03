@@ -1,0 +1,9 @@
+# Render blueprint: the sync server (server/server.mjs runs worker.js on Node). New + > Blueprint > this repository.
+services:
+  - type: web
+    name: osong-vr-sync
+    runtime: node
+    plan: free
+    buildCommand: npm install --prefix server
+    startCommand: node server/server.mjs
+    healthCheckPath: /healthz
