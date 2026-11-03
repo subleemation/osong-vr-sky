@@ -353,6 +353,7 @@
         }
       }
     }
+    drawPhotos(view);
     // constellation lines
     var sel = view.sel, selCons = (sel && sel.cons) || guideCons() || (STORY.ev && STORY.ev.highlight) || null;
     LBL = STORY.ev ? STORY.ev.labelAlpha : 1;
@@ -373,7 +374,9 @@
     }
     drawStoryLines(view);
     drawStoryPointer(view);
-    if (opt('trails')) drawTrails(view);
+    var stTr = STORY.ev && STORY.ev.trails;
+    if (stTr && stTr.p > 0) drawTrails(view, stTr.hours * 60 * stTr.p);
+    else if (opt('trails')) drawTrails(view, 120);
     // stars
     var lim = frame.lim, sizeK = Math.max(0.85, Math.min(2, Math.sqrt(view.f / 380))) * (view.vr ? 1.25 : 1);
     var M = frame.M, T = frame.T;
@@ -508,23 +511,55 @@
     c.restore();
   }
 
-  // star trails: where the bright stars were over the past two hours (the Earth turning under the sky)
+  // photos in the sky (js/photos.js): Andromeda Galaxy and the Pleiades (HG731GZ / Stellarium, CC BY 3.0), placed by three
+  // corners in RA/Dec; faint by default, brighter when zoomed in, and a story scene can grow one in place (fx 'grow')
+  var PHOTOS = (window.SKY_PHOTOS || []).map(function (p) {
+    var it = { id: p.id, img: new Image(), ok: false, base: p.base || 0.5,
+      tl: C.radec2vec(p.tl[0], p.tl[1]), tr: C.radec2vec(p.tr[0], p.tr[1]), bl: C.radec2vec(p.bl[0], p.bl[1]) };
+    it.cen = C.radec2vec((p.tr[0] + p.bl[0]) / 2, (p.tr[1] + p.bl[1]) / 2);
+    it.img.onload = function () { it.ok = true; }; it.img.src = p.src;
+    return it;
+  });
+  var PA = [0, 0], PB = [0, 0], PC = [0, 0], PM = [0, 0], PV = [0, 0, 0];
+  function drawPhotos(view) {
+    if (!PHOTOS.length || frame.dark < 0.05) return;
+    var fovNow = view.vr ? st.fov : st.zoomFov, zoom = Math.max(0, Math.min(1, (80 - fovNow) / 45));
+    var gr0 = STORY.ev && STORY.ev.photoGrow;
+    for (var i = 0; i < PHOTOS.length; i++) {
+      var p = PHOTOS[i]; if (!p.ok || altOf(p.cen) < 0.02) continue;
+      toCam(p.cen, PV); if (PV[2] < 0.2 || !proj(view, PV[0], PV[1], PV[2], PM)) continue;
+      toCam(p.tl, PV); if (!proj(view, PV[0], PV[1], PV[2], PA)) continue;
+      toCam(p.tr, PV); if (!proj(view, PV[0], PV[1], PV[2], PB)) continue;
+      toCam(p.bl, PV); if (!proj(view, PV[0], PV[1], PV[2], PC)) continue;
+      var gr = gr0 && gr0.id === p.id ? gr0 : null, g = gr ? gr.s : 1;
+      if (g !== 1) { var pts = [PA, PB, PC]; for (var q = 0; q < 3; q++) { pts[q][0] = PM[0] + (pts[q][0] - PM[0]) * g; pts[q][1] = PM[1] + (pts[q][1] - PM[1]) * g; } }
+      var w = p.img.width, h = p.img.height;
+      ctx.save();
+      ctx.globalAlpha = frame.dark * (p.base + (1 - p.base) * Math.max(zoom, gr ? gr.q : 0));
+      ctx.transform((PB[0] - PA[0]) / w, (PB[1] - PA[1]) / w, (PC[0] - PA[0]) / h, (PC[1] - PA[1]) / h, PA[0], PA[1]);
+      ctx.drawImage(p.img, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  // star trails: where the bright stars were over the past hours (the Earth turning under the sky).
+  // Mostly white with a hint of each star's colour and a soft halo, so they stand out without glaring.
   var TRAIL = { key: '', Ms: null };
-  function drawTrails(view) {
-    var steps = 24, span = 120, cam = st.cam, c = ctx;
-    var key = skyKey + ':' + Math.round(st.minutes * 4);
+  function drawTrails(view, minutesSpan) {
+    var steps = 28, span = minutesSpan || 120, cam = st.cam, c = ctx;
+    if (span < 1) return;
+    var key = skyKey + ':' + Math.round(st.minutes * 4) + ':' + Math.round(span);
     if (TRAIL.key !== key) {
       TRAIL.key = key; TRAIL.Ms = [];
       for (var k = 0; k <= steps; k++) TRAIL.Ms.push(C.eqjToEnu(S, st.minutes - span * (1 - k / steps)));
     }
-    var Ms = TRAIL.Ms;
-    c.save();
-    c.lineWidth = Math.max(0.8, view.f / 620);
+    var Ms = TRAIL.Ms, lw = Math.max(0.9, view.f / 560);
+    c.save(); c.lineCap = 'round';
     for (var col = 0; col < STAR_COLORS.length; col++) {
-      c.strokeStyle = hexA(STAR_COLORS[col], 0.45);
+      var h6 = STAR_COLORS[col], rgb = [1, 3, 5].map(function (o) { return Math.round(parseInt(h6.substr(o, 2), 16) * 0.35 + 255 * 0.65); }).join(',');
       c.beginPath();
       for (var i = 0; i < NS; i++) {
-        if (SB[i] !== col || SM[i] > 3.6) continue;
+        if (SB[i] !== col || SM[i] > 3.9) continue;
         var v = [SV[3 * i], SV[3 * i + 1], SV[3 * i + 2]], started = false;
         for (var q = 0; q <= steps; q++) {
           var e = C.apply(Ms[q], v);
@@ -536,7 +571,8 @@
           if (!started) { c.moveTo(P[0], P[1]); started = true; } else c.lineTo(P[0], P[1]);
         }
       }
-      c.stroke();
+      c.strokeStyle = 'rgba(' + rgb + ',0.13)'; c.lineWidth = lw * 3.2; c.stroke();
+      c.strokeStyle = 'rgba(' + rgb + ',0.72)'; c.lineWidth = lw; c.stroke();
     }
     c.restore();
   }
@@ -1116,6 +1152,8 @@
       else if (f.type === 'art') f.cons.forEach(function (c, j) { var a0 = f.at + (f.stagger || 0) * j; out.figures[c] = { p: f.dur > 0 ? easeS((t - a0) / f.dur) : 1, a: 1 }; });
       else if (f.type === 'pointer') out.pointer = { from: starVecByName(f.from), to: starVecByName(f.to), p: q };
       else if (f.type === 'eyepiece') out.eyepiece = { body: f.body, a: q };
+      else if (f.type === 'trails') out.trails = { hours: f.hours || 2, p: q };
+      else if (f.type === 'grow') out.photoGrow = { id: f.photo, s: 1 + ((f.scale || 2) - 1) * q, q: q };
     });
     (s.keepArt || []).forEach(function (c) {
       if (!out.figures[c]) out.figures[c] = { p: 1, a: 1 };
@@ -1173,7 +1211,7 @@
   // ---------- live link to the sync server (Cloudflare Worker), spots ----------
   var SERVER = 'wss://osong-vr-sync.lrwe36.workers.dev';
   var NET = { room: null, status: 'off', hostOpen: false, ws: null, gotState: false };
-  var SYNC = { has: false, phase: 'idle', base: 90, speed: 0, at: 0, spot: null, note: '', hold: false, timer: null, plan: null, view: null, story: null, art: null };
+  var SYNC = { has: false, phase: 'idle', base: 90, speed: 0, at: 0, spot: null, note: '', hold: false, timer: null, plan: null, view: null, story: null, art: null, close: null };
   (function () {
     var q = new URLSearchParams(location.search), r = (q.get('r') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 24);
     var sv = q.get('server');
@@ -1237,8 +1275,9 @@
     SYNC.spot = s.spot ? spotById(s.spot) : null;
     SYNC.note = s.note || ''; SYNC.hold = !!s.hold; SYNC.plan = s.plan || null;
     if (s.timer) {
-      SYNC.timer = { rem: s.timer.rem, total: s.timer.total, label: s.timer.label || '', paused: !!s.timer.paused, endLocal: Date.now() + s.timer.rem };
+      SYNC.timer = { rem: s.timer.rem, total: s.timer.total, label: s.timer.label || '', paused: !!s.timer.paused, endLocal: Date.now() + s.timer.rem, closing: !!s.timer.closing };
     } else SYNC.timer = null;
+    SYNC.close = s.close ? { t0: Date.now() - (s.close.el || 0) } : null;   // closing timer ran out: black screen, take the headset off
     renderNetChip();
   }
   function syncActive() { return NET.room && SYNC.has && SYNC.phase !== 'idle' && SYNC.phase !== 'end'; }
@@ -1277,8 +1316,24 @@
     c.fillStyle = 'rgba(14,15,20,0.94)'; roundRect(x - w / 2 - 8, y - fontPx * 0.78, w + 16, fontPx * 1.56, fontPx * 0.78); c.fill();
     c.fillStyle = color || '#e8cf8a'; c.fillText(txt, x, y);
   }
+  // the end of the closing timer: the sky goes black (0.8 s), then the message; two short lines so it fits one lens
+  function drawClosing(view) {
+    var c = ctx, since = Date.now() - SYNC.close.t0, vr = view.vr;
+    c.fillStyle = 'rgba(0,0,0,' + Math.min(1, since / 800).toFixed(3) + ')'; c.fillRect(view.clip[0], view.clip[1], view.clip[2], view.clip[3]);
+    var ta = Math.max(0, Math.min(1, (since - 600) / 900)); if (ta <= 0) return;
+    var cx = vr ? view.cx : W / 2, cy = vr ? view.cy : H / 2, mw = vr ? view.R * 1.4 : W - 32;
+    var f1 = vr ? Math.max(15, Math.min(24, view.R / 8)) : Math.max(18, Math.min(30, Math.min(W, H) / 13));
+    c.save(); c.globalAlpha = ta; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = '#f1ece0'; c.font = '700 ' + Math.round(f1) + 'px ' + TITLE_FONT;
+    if (vr) { c.fillText('헤드셋을 천천히', cx, cy - f1 * 1.05, mw); c.fillText('벗어 주세요', cx, cy + f1 * 0.2, mw); }
+    else c.fillText('헤드셋을 천천히 벗어 주세요', cx, cy - f1 * 0.45, mw);
+    c.fillStyle = 'rgba(236,222,196,0.7)'; c.font = Math.round(f1 * 0.6) + 'px ' + BODY_FONT;
+    c.fillText('오늘 함께해 줘서 고마워요', cx, cy + (vr ? f1 * 1.45 : f1 * 0.75), mw);
+    c.restore();
+  }
   function drawNetOverlay(view, fontPx) {
     if (!NET.room || !SYNC.has || st.mode === 'menu') return;
+    if (SYNC.close) { drawClosing(view); return; }
     var c = ctx, vr = view.vr, cx = view.cx, cy = view.cy;
     var rad = vr ? view.R : Math.min(W, H) / 2;
     if (SYNC.hold && syncActive()) {
@@ -1306,6 +1361,8 @@
     c.fillStyle = 'rgba(14,15,20,0.96)'; roundRect((vr ? cx : W / 2) - tw / 2 - 10, topY - fontPx * 0.75, tw + 20, fontPx * 1.5, fontPx * 0.75); c.fill();
     c.fillStyle = low ? '#ff9a6b' : '#e8cf8a'; c.fillText(txt, vr ? cx : W / 2, topY);
     }
+    // closing timer just started: tell VR viewers they can look things up now
+    if (vr && tm && tm.closing && !storyNow && tm.total - timerRemaining(tm) < 10000) cueText('별자리를 바라보면 설명이 나와요', cx, cy + rad * 0.62, fontPx * 0.85);
     // host message
     if (SYNC.note) {
       c.font = Math.round(fontPx * 1.05) + 'px ' + BODY_FONT;
@@ -1530,7 +1587,7 @@
   function introSet(state, alpha, showVid) { INTRO.state = state; INTRO.alpha = alpha; INTRO.showVid = !!showVid; }
   function introEval() {
     var s = INTRO.srv;
-    if (!s || NET.hostview) { introStopVid(false); introSet('VR_ACTIVE', 0); return; }
+    if (!s || NET.hostview) { introStopVid(false); if (!NET.hostview && waitingForHost()) { introSet('IDLE', 1); return; } introSet('VR_ACTIVE', 0); return; }
     if (s.st === 'wait') { introStopVid(true); INTRO.n = -1; introSet('IDLE', 1); return; }
     if (s.n !== INTRO.n) { INTRO.n = s.n; INTRO.started = false; INTRO.vidOk = false; INTRO.playFail = false; INTRO.endE = null; INTRO.skipEnd = false; }
     if (INTRO.doneN === s.n) { introStopVid(true); introSet('VR_ACTIVE', 0); return; }
@@ -1564,6 +1621,13 @@
     introSet('VR_ACTIVE', 0);
   }
   function introCovers() { return st.mode !== 'menu' && INTRO.alpha > 0.5; }
+  // joined from the presenter's QR before anything started: wait on a dark screen (but never forever if the server is unreachable)
+  var LOAD_T = Date.now();
+  function waitingForHost() {
+    if (!NET.room) return false;
+    if (!SYNC.has) return Date.now() - LOAD_T < 20000;
+    return SYNC.phase === 'idle' && !SYNC.story && !SYNC.hold && !SYNC.quiz && !SYNC.close && !(SYNC.view && SYNC.view.on);
+  }
   function drawIntro() {
     var on = st.mode !== 'menu' && (INTRO.alpha > 0.001 || INTRO.showVid);
     var cls = on && st.mode === 'screen';
@@ -1591,11 +1655,15 @@
       }
     }
     if (INTRO.state === 'IDLE') {
-      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = 'rgba(241,242,245,0.42)';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
       var spots = st.mode === 'vr' && EYES ? EYES : [{ cx: W / 2, cy: H / 2, R: Math.min(W, H) / 2 }];
+      var pulse = 0.55 + 0.35 * Math.sin(performance.now() / 700);
       for (var j = 0; j < spots.length; j++) {
-        c.font = Math.round(Math.max(13, Math.min(20, spots[j].R / 9))) + 'px ' + LABEL_FONT;
-        c.fillText('잠시 후 시작해요', spots[j].cx, spots[j].cy);
+        var fz = Math.max(15, Math.min(26, spots[j].R / 7.5)), mw = st.mode === 'vr' ? spots[j].R * 1.5 : W - 32;
+        c.fillStyle = 'rgba(241,236,224,' + pulse.toFixed(3) + ')'; c.font = '600 ' + Math.round(fz) + 'px ' + LABEL_FONT;
+        c.fillText('대기 중', spots[j].cx, spots[j].cy - fz * 0.5, mw);
+        c.fillStyle = 'rgba(236,222,196,0.5)'; c.font = Math.round(fz * 0.55) + 'px ' + LABEL_FONT;
+        c.fillText('진행자가 시작하면 바로 시작돼요', spots[j].cx, spots[j].cy + fz * 0.75, mw);
       }
     }
     c.restore();
@@ -1622,8 +1690,36 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden && NET.ws && NET.ws.readyState !== 1 && NET.ws.readyState !== 0) { wsRetry = 500; try { NET.ws.close(); } catch (e) {} } });
     renderNetChip();
   }
+  if (NET.room && !NET.hostview && !NET.sim) document.body.classList.add('guest');
   startPhoneLink();
   if (NET.room && !NET.hostview) setTimeout(introVideo, 1500);  // fetch the film early so it is ready when the host starts
+
+  var VEIL = { on: false, phase: null, t0: 0, a: 0, last: null };
+
+  // ---------- participant screens for the presenter ("CCTV"): every 1.5 s a small JPEG of what this phone draws
+  // (left eye in VR) goes to the presenter page through the same server; nothing but the sky drawing is sent. ?nocam=1 turns it off.
+  var CAM = { on: false, last: 0, cv: null, g: null, id: '' };
+  (function () {
+    var q = new URLSearchParams(location.search);
+    CAM.on = !!NET.room && !NET.hostview && !NET.sim && !q.has('nocam');
+    try { CAM.id = sessionStorage.getItem('osong-camid') || ''; } catch (e) {}
+    if (!CAM.id) { CAM.id = Math.random().toString(36).slice(2, 8); try { sessionStorage.setItem('osong-camid', CAM.id); } catch (e) {} }
+  })();
+  var CAM_DIRS = ['북', '북동', '동', '남동', '남', '남서', '서', '북서'];
+  function camFrame() {
+    if (!CAM.on || !NET.ws || NET.ws.readyState !== 1 || document.hidden) return;
+    var t = performance.now(); if (t - CAM.last < 1500) return; CAM.last = t;
+    if (!CAM.cv) { CAM.cv = document.createElement('canvas'); CAM.g = CAM.cv.getContext('2d'); }
+    var vr = st.mode === 'vr', srcW = vr ? 0.5 : 1, Wd = 320, Hd = Math.max(60, Math.round(Wd * canvas.height / Math.max(1, canvas.width * srcW)));
+    if (CAM.cv.width !== Wd || CAM.cv.height !== Hd) { CAM.cv.width = Wd; CAM.cv.height = Hd; }
+    var g = CAM.g; g.fillStyle = '#000'; g.fillRect(0, 0, Wd, Hd);
+    [glCanvas, canvas].forEach(function (L) { if (!L || !L.width || !L.height) return; try { g.drawImage(L, 0, 0, L.width * srcW, L.height, 0, 0, Wd, Hd); } catch (e) {} });
+    var img; try { img = CAM.cv.toDataURL('image/jpeg', 0.55); } catch (e) { return; }
+    var aa = C.enuToAltAz(st.cam.f), dir = CAM_DIRS[Math.round(((aa.az % 360) + 360) % 360 / 45) % 8] + ' ' + Math.round(aa.alt) + '°';
+    var state = INTRO.state === 'IDLE' ? '대기' : INTRO.state !== 'VR_ACTIVE' ? '오프닝' : SYNC.close ? '끝' : STORY.ev ? '이야기 ' + (STORY.ev.i + 1) + '장면'
+      : SYNC.timer && SYNC.timer.closing ? '자유 관찰' : '';
+    try { NET.ws.send(JSON.stringify({ k: 'cam', id: CAM.id, img: img, m: st.mode, d: st.mode === 'menu' ? '' : dir, s: st.mode === 'menu' ? '' : state })); } catch (e) {}
+  }
 
   var last = performance.now(), lastInfoKey = '';
   function loop(now) {
@@ -1633,7 +1729,14 @@
     var hidden = introCovers() && INTRO.alpha >= 0.999;
     if (!introCovers()) artPerf(dt);
     var synced = netTick();
-    STORY.ev = storyOn() ? storyEval() : null;
+    var wantStory = storyOn();
+    if (wantStory !== VEIL.on && !VEIL.phase && st.mode !== 'menu' && !introCovers() && !NET.hostview) { VEIL.phase = 'out'; VEIL.t0 = now; }
+    if (st.mode === 'menu' || NET.hostview) { VEIL.phase = null; VEIL.a = 0; }
+    if (VEIL.phase === 'out') { var vk = (now - VEIL.t0) / 700; VEIL.a = Math.min(1, vk * vk); if (vk >= 1) { VEIL.phase = 'in'; VEIL.t0 = now; VEIL.on = wantStory; } }
+    else if (VEIL.phase === 'in') { var vk2 = (now - VEIL.t0) / 1400; VEIL.a = 1 - easeS(vk2); if (vk2 >= 1) { VEIL.phase = null; VEIL.a = 0; } }
+    else VEIL.on = wantStory;
+    STORY.ev = VEIL.on ? (wantStory ? storyEval() : VEIL.last) : null;   // while fading out of a story, keep its last picture
+    if (STORY.ev) { VEIL.last = STORY.ev; if (netN % 20 === 0) syncTime(); }   // keep the clock on the scene's time
     if (STORY.ev) { st.minutes = STORY.ev.minutes; synced = true; }
     if (!synced && st.speed > 0 && st.mode !== 'menu') {
       st.minutes += dt * st.speed / 60;
@@ -1657,7 +1760,7 @@
     if (GL && !hidden) ctx.clearRect(0, 0, W, H);
     else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
     quizTick();
-    var sel = (st.mode === 'menu' || (st.mode === 'vr' && PANEL.open) || STORY.ev || introCovers() || quizOn()) ? null : pickTarget();
+    var sel = (st.mode === 'menu' || (st.mode === 'vr' && PANEL.open) || STORY.ev || introCovers() || quizOn() || (NET.room && SYNC.close) || VEIL.a > 0.5) ? null : pickTarget();
     updateArtFocus(dt, sel);
     if (st.mode === 'vr') {
       var half = W / 2;
@@ -1688,6 +1791,8 @@
       }
     }
     drawIntro();
+    if (VEIL.a > 0.001) { ctx.fillStyle = 'rgba(0,0,0,' + VEIL.a.toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
+    camFrame();
     requestAnimationFrame(loop);
   }
   // sky colour, horizon glow and the NASA Milky Way for this frame's views, drawn on the WebGL layer
@@ -1867,6 +1972,7 @@
     askMotionPermission().then(function (ok) {
       setTimeout(function () {
         if (!ok || !st.sensorSeen) {
+          $('goScreen').classList.remove('solo-only');   // QR guests normally only get VR; without sensors they need this way in
           note('이 화면에서는 폰 기울기 센서를 쓸 수 없어요. 고개를 돌려도 하늘이 따라오지 않으니, 휴대폰 브라우저(크롬, 사파리)에서 이 페이지 주소를 직접 열어 주세요. 지금은 ‘화면으로 보기’로 둘러볼 수 있어요.');
           return;
         }
@@ -1961,5 +2067,5 @@
     });
   }
   requestAnimationFrame(loop);
-  window.__sky = { intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
+  window.__sky = { intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
 })();

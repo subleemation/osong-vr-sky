@@ -101,8 +101,19 @@
     renderStory();
     tick();
   }
+  // ---- closing timer: the last free look on the story's sky, then every phone goes black with "take the headset off" ----
+  function clRender() {
+    var T = ST && ST.timer && ST.timer.closing ? ST.timer : null, closed = !!(ST && ST.close);
+    $('clState').textContent = T ? fmtTime(timerRem()) + (T.paused ? ' (멈춤)' : '') : closed ? '끝' : '';
+    $('clText').textContent = T ? '폰 위쪽에 남은 시간이 떠 있어요. 별자리를 바라보면 그림과 설명이 나와요. 끝나면 화면이 검게 바뀌고 ‘헤드셋을 천천히 벗어 주세요’가 떠요.'
+      : closed ? '폰에 ‘헤드셋을 천천히 벗어 주세요’가 떠 있어요. 안내 지우기를 누르면 사라져요.'
+      : '이야기 마지막 장면에서 누르면, 그 하늘 그대로 자유 관찰 시간이 시작돼요.';
+    $('clStart').textContent = T || closed ? '다시 시작' : '타이머 시작';
+    $('clNow').disabled = !T; $('clOff').disabled = !T && !closed;
+  }
   function tick() {
     storyState();
+    clRender();
     if (typeof introRender === 'function') introRender();
     if (!ST) return;
     var rem = timerRem();
@@ -428,6 +439,13 @@
   });
   $('sPrev').addEventListener('click', function () { var cs = curStory(); if (cs && cs.i > 0) cmd('story', { show: cs.show, i: cs.i - 1 }); });
   $('sEnd').addEventListener('click', function () { cmd('story', { show: null }); });
+  $('clStart').addEventListener('click', function () {
+    var cs = curStory(), extra = { v: 'run', min: Math.max(0.25, Math.min(30, +$('clMin').value || 3)) };
+    if (cs) { var sc = showBy(cs.show).scenes[cs.i]; if (sc && sc.view) extra.time = sc.view.minutes; }   // keep the story's sky time
+    cmd('closing', extra);
+  });
+  $('clNow').addEventListener('click', function () { if (!this.disabled) cmd('closing', { v: 'done' }); });
+  $('clOff').addEventListener('click', function () { if (!this.disabled) cmd('closing', { v: 'off' }); });
   document.addEventListener('keydown', function (e) {
     var tg = e.target && e.target.tagName;
     if (tg === 'INPUT' || tg === 'SELECT' || tg === 'TEXTAREA' || !authed) return;
@@ -495,5 +513,5 @@
   drawQR();
   try { key = sessionStorage.getItem('osong-key') || ''; } catch (e) {}
   connect();
-  window.__admin = { send: send };
+  window.__admin = { send: send, room: function () { return room; }, server: function () { return SERVER; }, state: function () { return ST; } };
 })();
