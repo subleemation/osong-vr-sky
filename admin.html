@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#292A2D">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/admin.css?v=9">
+<link rel="stylesheet" href="css/admin.css?v=10">
 </head>
 <body>
 <!-- only an old sync server (worker.js before the password was removed) asks for this -->
@@ -233,7 +233,7 @@
             <button type="button" class="btn sm" data-view="vr" aria-pressed="false">VR 헤드셋</button>
             <button type="button" class="btn sm" data-view="screen" aria-pressed="false">화면 모드</button>
           </div>
-          <button type="button" class="btn sm switch" id="hSplit" aria-pressed="false" title="위: 진행자 시점, 아래: 고른 참가자 화면">진행자 + 참가자</button>
+          <button type="button" class="btn sm switch" id="hSplit" aria-pressed="false" title="진행자 시점을 크게, 참가자 화면을 작은 창으로">진행자 + 참가자</button>
           <button type="button" class="btn sm switch" id="hFollow" aria-pressed="false">따라오게 하기</button>
         </div>
       </div>
@@ -242,6 +242,7 @@
           <div class="mcell" data-cell="host"><iframe id="hSky" title="진행자 시점 하늘 화면" allow="fullscreen"></iframe><span class="mlab">진행자 시점 · 끌어서 돌리기, 휠로 확대</span></div>
           <div class="mcell" data-cell="vr"><iframe id="pVR" title="VR 헤드셋 화면 미리보기"></iframe><span class="mlab">VR 헤드셋 화면</span></div>
           <div class="mcell" data-cell="screen"><iframe id="pSC" title="화면 모드 미리보기"></iframe><span class="mlab">화면 모드</span></div>
+          <div class="pipbar" id="pipBar"><button type="button" class="btn" id="hSwap">크게 보기</button><button type="button" class="btn" id="hPipMode">화면 모드로</button></div>
           <div class="mwait" id="mWait">서버에 연결하는 중이에요…</div>
         </div>
       </div>
@@ -262,13 +263,13 @@
 </div>
 
 <script src="js/config.js?v=1"></script>
-<script src="vendor/qrcode.js?v=9"></script>
-<script src="js/sky-data.js?v=9"></script>
+<script src="vendor/qrcode.js?v=10"></script>
+<script src="js/sky-data.js?v=10"></script>
 <script src="vendor/astronomy.browser.min.js?v=2.1.19"></script>
-<script src="js/sky-core.js?v=9"></script>
-<script src="story.js?v=9"></script>
+<script src="js/sky-core.js?v=10"></script>
+<script src="story.js?v=10"></script>
 <script src="quiz.js?v=1"></script>
-<script src="js/admin.js?v=9"></script>
+<script src="js/admin.js?v=10"></script>
 
 </body>
 </html>

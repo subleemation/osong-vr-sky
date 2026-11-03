@@ -326,14 +326,21 @@
   function renderFollow() { $('hFollow').setAttribute('aria-pressed', follow ? 'true' : 'false'); }
   $('hFollow').addEventListener('click', function () { follow = !follow; followAt = Date.now(); renderFollow(); sendView(true); });
 
-  var mview = 'host', split = false, prevOn = true;
+  var mview = 'host', split = false, swap = false, prevOn = true;
   try { prevOn = localStorage.getItem('osong-prev') !== 'off'; mview = localStorage.getItem('osong-mview') || 'host'; } catch (e) {}
   function renderMirror() {
     var f = $('mFrame');
     if (!prevOn && mview !== 'host') mview = 'host';
-    // split: the presenter's view above, the participant view (VR or screen mode) below
+    // presenter + participant: the presenter's view fills the frame (easy to drag), the participant view sits in a
+    // small window in the corner; 크게 보기 swaps the two
     var sp = split && prevOn, second = mview === 'screen' ? 'screen' : 'vr';
     f.setAttribute('data-view', mview); f.setAttribute('data-second', second); f.classList.toggle('split', sp);
+    document.querySelectorAll('#mFrame .mcell').forEach(function (c) {
+      var id = c.getAttribute('data-cell');
+      c.classList.toggle('pip', sp && (swap ? id === 'host' : id === second));
+    });
+    $('hSwap').textContent = swap ? '진행자 시점 크게' : '참가자 화면 크게';
+    $('hPipMode').textContent = second === 'vr' ? '화면 모드로' : 'VR 헤드셋으로';
     document.querySelectorAll('[data-view]').forEach(function (b) {
       if (b.tagName !== 'BUTTON') return;
       var v = b.getAttribute('data-view');
@@ -354,7 +361,9 @@
       try { localStorage.setItem('osong-mview', mview); } catch (e) {} renderMirror();
     });
   });
-  $('hSplit').addEventListener('click', function () { split = !split; if (split && mview === 'host') mview = 'vr'; renderMirror(); });
+  $('hSplit').addEventListener('click', function () { split = !split; swap = false; if (split && mview === 'host') mview = 'vr'; renderMirror(); });
+  $('hSwap').addEventListener('click', function () { swap = !swap; renderMirror(); });
+  $('hPipMode').addEventListener('click', function () { mview = mview === 'screen' ? 'vr' : 'screen'; try { localStorage.setItem('osong-mview', mview); } catch (e) {} renderMirror(); });
   $('hPrevToggle').addEventListener('click', function () { prevOn = !prevOn; try { localStorage.setItem('osong-prev', prevOn ? 'on' : 'off'); } catch (e) {} renderMirror(); });
   renderMirror();
 

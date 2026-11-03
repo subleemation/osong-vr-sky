@@ -1,7 +1,8 @@
-// WebGL background: sky colour plus the NASA Milky Way photo map, drawn behind the 2D sky canvas.
+// WebGL background: sky colour, the NASA Milky Way photo map and the NASA star photo, drawn behind the 2D sky canvas.
 // Each screen pixel is turned back into a direction on the sky (undoing the VR lens correction first)
-// and looked up in the equirectangular map (equatorial J2000, 0h at the centre, RA increasing to the left).
-var SkyGL = function (canvas, url) {
+// and looked up in the equirectangular maps (equatorial J2000, 0h at the centre, RA increasing to the left).
+// starUrls: one 4096x2048 map, or the two 4096x4096 halves of the 8192x4096 map (u < 0.5, u >= 0.5).
+var SkyGL = function (canvas, url, starUrls) {
   'use strict';
   var gl = null;
   try { gl = canvas.getContext('webgl', { alpha: false, antialias: false, premultipliedAlpha: false }); } catch (e) {}
@@ -16,6 +17,7 @@ var SkyGL = function (canvas, url) {
     'uniform mat3 T; uniform vec3 up; uniform vec3 east; uniform vec3 north;',
     'uniform vec3 glow; uniform vec3 dome; uniform float cut; uniform float curve;',
     'uniform vec3 sky; uniform float gain;',
+    'uniform sampler2D starsA; uniform sampler2D starsB; uniform float nst; uniform float sgain; uniform float scut; uniform float sboost;',
     'void main(){',
     '  vec2 px = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) / dpr;',
     '  vec2 d = px - c;',
@@ -30,14 +32,20 @@ var SkyGL = function (canvas, url) {
     '  float az = atan(dot(east, v), dot(north, v));',
     '  float w = exp(-pow((az - 1.25) / 0.75, 2.0));',
     '  col += dome * w * exp(-a / 0.11);',
+    '  float ra = atan(v.y, v.x), dec = asin(clamp(v.z, -1.0, 1.0));',
+    '  vec2 uv = vec2(0.5 - ra / 6.2831853, 0.5 - dec / 3.1415927);',
     '  if (ready > 0.5 && gain > 0.0 && alt > 0.0) {',
-    '    float ra = atan(v.y, v.x), dec = asin(clamp(v.z, -1.0, 1.0));',
-    '    vec2 uv = vec2(0.5 - ra / 6.2831853, 0.5 - dec / 3.1415927);',
     '    vec3 mw = texture2D(tex, uv).rgb;',
     // cut away the faint haze around the band so only the Milky Way itself remains
     '    mw = pow(max(mw - cut, 0.0) / (1.0 - cut), vec3(curve));',
     '    float ext = smoothstep(0.0, 0.42, alt);', // thicker air near the horizon hides the faint band
     '    col += mw * mw * gain * ext + mw * gain * 0.35 * ext;',
+    '  }',
+    // real stars from the photo: a brighter sky (twilight, town light, moonlight) cuts the faint ones first
+    '  if (nst > 0.5 && sgain > 0.0 && alt > -0.01) {',
+    '    vec3 s = nst > 1.5 ? (uv.x < 0.5 ? texture2D(starsA, vec2(uv.x * 2.0, uv.y)).rgb : texture2D(starsB, vec2(uv.x * 2.0 - 1.0, uv.y)).rgb) : texture2D(starsA, uv).rgb;',
+    '    s = max(s - scut, 0.0) / (1.0 - scut);',
+    '    col += min(s * sboost, vec3(1.0)) * sgain * smoothstep(-0.01, 0.2, alt);',
     '  }',
     '  gl_FragColor = vec4(col, 1.0);',
     '}'
@@ -62,7 +70,7 @@ var SkyGL = function (canvas, url) {
   var loc = gl.getAttribLocation(prog, 'p');
   gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   var U = {};
-  ['tex', 'ready', 'size', 'dpr', 'c', 'f', 'R', 'k', 'T', 'up', 'east', 'north', 'glow', 'dome', 'cut', 'curve', 'sky', 'gain'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
+  ['tex', 'ready', 'size', 'dpr', 'c', 'f', 'R', 'k', 'T', 'up', 'east', 'north', 'glow', 'dome', 'cut', 'curve', 'sky', 'gain', 'starsA', 'starsB', 'nst', 'sgain', 'scut', 'sboost'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
 
   // ---- illustrations: textured meshes; the art's alpha is its brightness, so nothing but the drawing shows ----
   var AVS = 'attribute vec4 pv; uniform vec2 css; varying vec2 uv; void main(){ uv = pv.zw; gl_Position = vec4(pv.x / css.x * 2.0 - 1.0, 1.0 - pv.y / css.y * 2.0, 0.0, 1.0); }';
@@ -111,9 +119,33 @@ var SkyGL = function (canvas, url) {
   };
   img.src = url;
 
+  // star photo: mipmapped so stars do not flicker when the map is shrunk (the RA seam is a faint one-pixel line at most)
+  var maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+  var stex = [], sLoaded = 0, sWant = maxTex >= 4096 && starUrls ? starUrls.length : 0;
+  (starUrls || []).slice(0, sWant).forEach(function (u, i) {
+    var t = gl.createTexture(); stex.push(t);
+    gl.activeTexture(gl.TEXTURE2 + i); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0]));
+    var im = new Image();
+    im.onload = function () {
+      gl.activeTexture(gl.TEXTURE2 + i); gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, im);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, sWant === 1 ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.activeTexture(gl.TEXTURE0);
+      sLoaded++;
+    };
+    im.src = u;
+  });
+  gl.activeTexture(gl.TEXTURE0);
+
   var W = 0, H = 0, DPR = 1;
   return {
     hasArt: !!aprog,
+    starsReady: function () { return sWant > 0 && sLoaded === sWant; },
     // items: [{ key, img, tris: Float32Array of x,y,u,v (CSS px) per vertex, alpha, clip }]
     drawArt: function (items) {
       if (!aprog || !items.length) return;
@@ -143,7 +175,7 @@ var SkyGL = function (canvas, url) {
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
     },
     // views: [{cx, cy, f, R, k, clip:[x,y,w,h]}]; T: J2000 -> camera rows; M: J2000 -> East/North/Up rows; sky: rgb 0..1
-    // o: { glow, dome (rgb 0..1 added near the horizon), cut, curve (Milky Way clean-up) }
+    // o: { glow, dome (rgb 0..1 added near the horizon), cut, curve (Milky Way clean-up), sgain, scut (star photo) }
     draw: function (views, T, M, sky, gain, o) {
       var up = M[2];
       gl.viewport(0, 0, canvas.width, canvas.height);
@@ -161,11 +193,22 @@ var SkyGL = function (canvas, url) {
       gl.uniform3f(U.east, M[0][0], M[0][1], M[0][2]); gl.uniform3f(U.north, M[1][0], M[1][1], M[1][2]);
       gl.uniform3f(U.glow, o.glow[0], o.glow[1], o.glow[2]); gl.uniform3f(U.dome, o.dome[0], o.dome[1], o.dome[2]);
       gl.uniform1f(U.cut, o.cut); gl.uniform1f(U.curve, o.curve);
+      var sOn = sWant > 0 && sLoaded === sWant;
+      gl.uniform1f(U.nst, sOn ? sWant : 0); gl.uniform1f(U.sgain, o.sgain || 0); gl.uniform1f(U.scut, o.scut || 0);
+      if (sOn) {
+        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, stex[0]); gl.uniform1i(U.starsA, 2);
+        gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, stex[sWant > 1 ? 1 : 0]); gl.uniform1i(U.starsB, 3);
+        gl.activeTexture(gl.TEXTURE0);
+      } else { gl.uniform1i(U.starsA, 0); gl.uniform1i(U.starsB, 0); }
       gl.enable(gl.SCISSOR_TEST);
       for (var i = 0; i < views.length; i++) {
         var v = views[i], cl = v.clip;
         gl.scissor(Math.round(cl[0] * DPR), Math.round((H - cl[1] - cl[3]) * DPR), Math.round(cl[2] * DPR), Math.round(cl[3] * DPR));
         gl.uniform2f(U.c, v.cx, v.cy); gl.uniform1f(U.f, v.f); gl.uniform1f(U.R, v.R); gl.uniform1f(U.k, v.k);
+        // a shrunk star map averages each star over several texels: give that light back (a screen pixel spans
+        // 1/(f*dpr) radians, a texel 2pi/width)
+        var texel = 6.2831853 / (sWant > 1 ? 8192 : 4096), pix = 1 / (v.f * DPR);
+        gl.uniform1f(U.sboost, Math.max(1, Math.min(4, Math.pow(pix / texel, 0.9))) * (v.k > 0 ? 1.7 : 1)); // the small VR eye views get extra
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
       gl.disable(gl.SCISSOR_TEST);

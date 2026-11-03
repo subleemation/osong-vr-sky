@@ -157,9 +157,14 @@ input[type=range] { width: 100%; accent-color: var(--text-primary); margin: 0; }
 .mcell iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--bg-observation); }
 .mlab { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--text-secondary); background: var(--bg-observation); padding: 2px 8px; border-radius: var(--radius-sm); pointer-events: none; }
 .mframe[data-view="host"] .mcell[data-cell="host"], .mframe[data-view="vr"] .mcell[data-cell="vr"], .mframe[data-view="screen"] .mcell[data-cell="screen"] { display: block; }
-.mframe.split { aspect-ratio: auto; width: 100cqw; height: 100cqh; grid-template-rows: 1fr 1fr; gap: 1px; background: var(--border-default); } /* presenter above, participant below, using the whole area (a VR view is wide anyway) */
+/* presenter + participant: one view fills the frame, the other sits in a small window in the corner */
 .mframe.split .mcell { display: none; }
-.mframe.split .mcell[data-cell="host"], .mframe.split[data-second="vr"] .mcell[data-cell="vr"], .mframe.split[data-second="screen"] .mcell[data-cell="screen"] { display: block; }
+.mframe.split .mcell[data-cell="host"], .mframe.split[data-second="vr"] .mcell[data-cell="vr"], .mframe.split[data-second="screen"] .mcell[data-cell="screen"] { display: block; grid-area: 1 / 1; }
+.mframe.split .mcell.pip { position: absolute; right: 12px; bottom: 12px; width: 34%; aspect-ratio: 16 / 9; z-index: 2;
+  border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-observation); }
+.pipbar { position: absolute; z-index: 3; display: none; gap: 6px; right: 12px; bottom: calc(18px + 34%); } /* just above the small window (the frame is 16:9, so 34% of its height = the window's height) */
+.mframe.split .pipbar { display: flex; }
+.pipbar .btn { min-height: 28px; padding: 3px 10px; font-size: 13px; background: var(--bg-panel); }
 .mwait { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-secondary); font-size: 15px; background: var(--bg-observation); }
 .mnote { margin: 0; font-size: 12px; color: var(--text-secondary); }
 

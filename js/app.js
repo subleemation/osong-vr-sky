@@ -93,6 +93,17 @@
     SB[i] = bv < 0 ? 0 : bv < 0.3 ? 1 : bv < 0.6 ? 2 : bv < 0.9 ? 3 : bv < 1.3 ? 4 : 5;
   }
   var STAR_COLORS = ['#b9cbff', '#dbe4ff', '#fff6ea', '#fff0c8', '#ffd9a0', '#ffbd84'];
+  // stars on top of the star photo: a soft point-spread (gaussian core, faint wide halo) like a long exposure
+  var psf = STAR_COLORS.map(function (col) {
+    var c = document.createElement('canvas'); c.width = c.height = 128;
+    var g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    var n = parseInt(col.slice(1), 16), rgb = [n >> 16, (n >> 8) & 255, n & 255].map(function (v) { return Math.round(v + (255 - v) * 0.55); }).join(',');
+    [[0, 1], [0.05, 0.92], [0.1, 0.62], [0.16, 0.3], [0.25, 0.11], [0.4, 0.035], [0.65, 0.01], [1, 0]].forEach(function (s) {
+      gr.addColorStop(s[0], 'rgba(' + (s[0] < 0.06 ? '255,255,255' : rgb) + ',' + s[1] + ')');
+    });
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    return c;
+  });
   var sprites = STAR_COLORS.map(function (col) {
     var c = document.createElement('canvas'); c.width = c.height = 64;
     var g = c.getContext('2d');
@@ -232,7 +243,10 @@
   // NASA Milky Way photo map and the sky colour on a WebGL layer behind this canvas (js/skygl.js);
   // without WebGL the sky is filled here and the Milky Way outline polygons are used instead
   var glCanvas = document.getElementById('skygl');
-  var GL = glCanvas && window.SkyGL ? SkyGL(glCanvas, 'assets/milkyway_4k.jpg') : null;
+  // the star photo: 8192x4096 in two halves on a laptop or desktop (mouse), 4096x2048 on phones and in VR,
+  // where one pixel of an eye's view already spans about 0.2°
+  var STAR_MAPS = window.matchMedia && matchMedia('(pointer: fine)').matches ? ['assets/stars_8k_0.jpg', 'assets/stars_8k_1.jpg'] : ['assets/stars_4k.jpg'];
+  var GL = glCanvas && window.SkyGL ? SkyGL(glCanvas, 'assets/milkyway_4k.jpg', STAR_MAPS) : null;
   if (glCanvas && !GL) glCanvas.style.display = 'none';
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 3); // full phone resolution keeps stars crisp
@@ -374,12 +388,12 @@
     drawStoryLines(view);
     drawStoryPointer(view);
     if (opt('trails') && !STORY.ev) drawTrails(view);
-    // stars
+    // stars: with the star photo underneath, only the brighter ones get a soft glow on top; without it, all of them
     var lim = frame.lim, sizeK = Math.max(0.85, Math.min(2, Math.sqrt(view.f / 380)));
-    var M = frame.M, T = frame.T;
+    var M = frame.M, T = frame.T, photo = !!(GL && GL.starsReady());
     for (var i = 0; i < NS; i++) {
       var m = SM[i];
-      if (m > lim + 0.3) continue;
+      if (m > lim + 0.3 || (photo && m > 3.2)) continue;
       var x = SV[3 * i], y = SV[3 * i + 1], z = SV[3 * i + 2];
       var up = M[2][0] * x + M[2][1] * y + M[2][2] * z;
       if (up <= 0) continue;
@@ -392,6 +406,13 @@
       var mEff = m + 0.25 * (1 / Math.max(up, 0.06) - 1); // thicker air near the ground
       var vis = lim - mEff;
       if (vis < -0.3) continue;
+      if (photo) { // brightness ~ flux: each magnitude brighter is 2.5x the light, shown as a wider, stronger glow
+        var fl = Math.pow(10, -0.4 * (mEff - 3.2));
+        var vk = view.vr ? 1.35 : 1, dp = Math.min(60, 7 + 5.5 * Math.sqrt(fl)) * sizeK * vk;
+        c.globalAlpha = Math.max(0, Math.min(0.95, 0.15 * vk * Math.sqrt(fl) * Math.min(1, vis / 1.5)));
+        c.drawImage(psf[SB[i]], P[0] - dp / 2, P[1] - dp / 2, dp, dp);
+        continue;
+      }
       var alpha = Math.max(0.25, Math.min(1, 0.45 + vis / 1.4));
       var d = Math.max(3, (lim + 2.6 - mEff) * 2.5) * sizeK;
       if (m < 1.5) d *= 1.25;
@@ -894,7 +915,7 @@
   function updatePanel(dt) {
     if (PANEL.toastT > 0) PANEL.toastT -= dt;
     if (st.mode !== 'vr' || introCovers()) { PANEL.open = false; PANEL.id = null; return; }
-    var f = st.cam.f, pitch = Math.asin(Math.max(-1, Math.min(1, f[2]))) / D2R;
+    var f = st.cam.f, pitch = Math.abs(VRT.pcur) > 0.05 && !PANEL.open ? VRT.rawPitch : Math.asin(Math.max(-1, Math.min(1, f[2]))) / D2R; // real head pitch while the view is tilted
     if (pitch > -30) PANEL.lastAz = C.enuToAltAz(f).az;
     if (!PANEL.open && pitch < -36) { PANEL.open = true; PANEL.yaw = PANEL.lastAz; PANEL.id = null; PANEL.t = 0; }
     else if (PANEL.open && pitch > -16) { PANEL.open = false; PANEL.id = null; }
@@ -1734,31 +1755,55 @@
     GL.draw(views, frame.T, frame.M, [(mix(34, 6, t) + 14 * ml) / 255, (mix(52, 7, t) + 20 * ml) / 255, (mix(98, 12, t) + 34 * ml) / 255], gain * 0.7, {
       glow: [(34 - 14 * t) / 255, (36 - 16 * t) / 255, (50 - 26 * t) / 255],
       dome: [(52 * (0.4 + 0.6 * t)) / 255, (38 * (0.4 + 0.6 * t)) / 255, (26 * (0.4 + 0.6 * t)) / 255],
-      cut: 0.2, curve: 1.25 // keep only the band itself, not the haze around it
+      cut: 0.2, curve: 1.25, // keep only the band itself, not the haze around it
+      // star photo: fades in after sunset, and a brighter sky (low limiting magnitude) cuts the faint stars first
+      sgain: Math.max(0, Math.min(1, (lim - 0.8) / 2.2)) * 1.35, scut: Math.max(0, Math.min(0.7, (6.4 - lim) * 0.1))
     });
   }
   // VR: instead of pointing with an arrow, the sky turns (slowly, about the vertical only) so that what the
   // presenter shows - a story scene, the host's view, a spot - comes round in front of where the phone faces.
-  var VRT = { key: '', goal: 0, cur: 0, at: 0 };
+  // Up/down is added the same way, but as a tilt of the view about the head's own horizontal axis, so the horizon
+  // stays level wherever you look; it eases back to zero when there is nothing to show, or while the floor panel is open.
+  var VRT = { key: '', goal: 0, cur: 0, pgoal: 0, pcur: 0, rawPitch: 0, at: 0 };
   function vrLookTarget() {
-    if (STORY.ev) return { key: 'story' + SYNC.story.show + ':' + STORY.ev.i, az: C.enuToAltAz(STORY.ev.endDir).az };
-    if (followOn()) return { key: 'view' + Math.round(SYNC.view.yaw), az: SYNC.view.yaw };
+    if (STORY.ev) { var ea = C.enuToAltAz(STORY.ev.endDir); return { key: 'story' + SYNC.story.show + ':' + STORY.ev.i, az: ea.az, alt: ea.alt }; }
+    if (followOn()) return { key: 'view' + Math.round(SYNC.view.yaw) + ',' + Math.round(SYNC.view.pitch), az: SYNC.view.yaw, alt: SYNC.view.pitch };
     var sp = syncActive() ? SYNC.spot : null;
-    if (sp) return { key: 'spot' + sp.id, az: spotAltAz(sp, st.minutes).az };
+    if (sp) { var sa = spotAltAz(sp, st.minutes); return { key: 'spot' + sp.id, az: sa.az, alt: sa.alt }; }
     return null;
   }
   function vrTurned(raw) {
-    var tg = vrLookTarget();
+    var tg = vrLookTarget(), ha = C.enuToAltAz(raw.f);
+    VRT.rawPitch = ha.alt;
     if (tg && tg.key !== VRT.key) { // new target: work out once how far to turn, from where the head points now
       VRT.key = tg.key;
-      var head = C.enuToAltAz(raw.f).az;
-      VRT.goal = VRT.cur + ((tg.az - (head + VRT.cur) + 540) % 360 - 180);
+      VRT.goal = VRT.cur + ((tg.az - (ha.az + VRT.cur) + 540) % 360 - 180);
+      var alt = Math.max(-5, Math.min(80, tg.alt));
+      VRT.pgoal = Math.max(-80, Math.min(80, alt - ha.alt));
+    } else if (!tg) { VRT.key = ''; VRT.pgoal = 0; }
+    var now = performance.now(), dt = Math.min(0.25, (now - (VRT.at || now)) / 1000), k = Math.min(1, dt * 2.2); VRT.at = now;
+    VRT.cur += (VRT.goal - VRT.cur) * k; // settles in about 2 s, on slow phones too
+    var pg = PANEL.open ? 0 : Math.max(-85 - ha.alt, Math.min(85 - ha.alt, VRT.pgoal)); // never past straight up / down
+    VRT.pcur += (pg - VRT.pcur) * k;
+    var out = raw;
+    if (Math.abs(VRT.cur) > 1e-3) {
+      var a = -VRT.cur * D2R; // azimuth grows clockwise seen from above, rotZ turns counter-clockwise
+      out = { f: rotZ(raw.f, a), r: rotZ(raw.r, a), u: rotZ(raw.u, a) };
     }
-    var now = performance.now(), dt = Math.min(0.25, (now - (VRT.at || now)) / 1000); VRT.at = now;
-    VRT.cur += (VRT.goal - VRT.cur) * Math.min(1, dt * 2.2); // settles in about 2 s, on slow phones too
-    if (Math.abs(VRT.cur) < 1e-3) return raw;
-    var a = -VRT.cur * D2R; // azimuth grows clockwise seen from above, rotZ turns counter-clockwise
-    return { f: rotZ(raw.f, a), r: rotZ(raw.r, a), u: rotZ(raw.u, a) };
+    if (Math.abs(VRT.pcur) > 0.05) out = tiltUp(out, VRT.pcur * D2R);
+    return out;
+  }
+  // turn the view up by ang about the horizontal axis that points to the head's right (r x f = u, so f moves toward u)
+  function tiltUp(cam, ang) {
+    var kx = cam.r[0], ky = cam.r[1], kl = Math.hypot(kx, ky);
+    if (kl < 1e-6) return cam;
+    kx /= kl; ky /= kl;
+    var c = Math.cos(ang), s = Math.sin(ang);
+    function rot(v) { // Rodrigues about k = (kx, ky, 0)
+      var kv = kx * v[0] + ky * v[1], cx = ky * v[2], cy = -kx * v[2], cz = kx * v[1] - ky * v[0];
+      return [v[0] * c + cx * s + kx * kv * (1 - c), v[1] * c + cy * s + ky * kv * (1 - c), v[2] * c + cz * s];
+    }
+    return { f: rot(cam.f), r: rot(cam.r), u: rot(cam.u) };
   }
   // the story plays on its own night; otherwise the presenter's choice, then this phone's own
   function activeSky() {

@@ -3,3 +3,6 @@ Source: NASA/Goddard Space Flight Center Scientific Visualization Studio, "Deep 
 https://svs.gsfc.nasa.gov/4851 (milkyway_2020_4k.exr). Gaia DR2: ESA/Gaia/DPAC.
 NASA visualizations are generally not subject to copyright in the United States; credit as above.
 Converted with tools/build-milkyway.py (asinh stretch, slight blur, JPEG).
+
+assets/stars_4k.jpg, assets/stars_8k_0.jpg, assets/stars_8k_1.jpg: made from starmap_2020_8k.exr of the same collection
+(https://svs.gsfc.nasa.gov/4851) by tools/build-stars.py: background removed so only the stars remain, asinh stretch.
