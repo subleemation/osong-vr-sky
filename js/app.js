@@ -507,7 +507,7 @@
     c.beginPath(); c.arc(view.cx, view.cy, r, 0, Math.PI * 2); c.stroke();
     c.font = Math.round(fontPx * 0.8) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillStyle = 'rgba(214,206,190,0.8)';
-    c.fillText('허블 사진 · 2009년, 올해처럼 고리가 옆으로 누운 때', view.cx, view.vr ? view.cy - r - fontPx * 0.9 : view.cy + r + fontPx * 1.1);
+    c.fillText('허블 사진 · 2009년, 고리가 거의 옆으로 누웠던 때', view.cx, view.vr ? view.cy - r - fontPx * 0.9 : view.cy + r + fontPx * 1.1);
     c.restore();
   }
 
@@ -1265,7 +1265,8 @@
     SYNC.disp = s.disp && typeof s.disp === 'object' ? s.disp : null;
     SYNC.quiz = s.quiz && s.quiz.n ? s.quiz : null;
     setTimeout(renderSkyWhere, 0);
-    SYNC.story = s.story && s.story.show ? { show: s.story.show, i: s.story.i | 0, t0: Date.now() - (s.story.el || 0) } : null;
+    SYNC.story = s.story && s.story.show ? { show: s.story.show, i: s.story.i | 0, t0: Date.now() - (s.story.el || 0), sky: !!s.story.sky } : null;
+    SYNC.pin = s.pin === 'host' || s.pin === 'event' ? s.pin : null;
     SYNC.view = s.view ? { on: !!s.view.on, yaw: +s.view.yaw || 0, pitch: +s.view.pitch || 0, fov: +s.view.fov || 75 } : null;
     INTRO.srv = s.intro && s.intro.st ? { st: s.intro.st, n: s.intro.n | 0, len: typeof s.intro.len === 'number' ? s.intro.len : null, t0: Date.now() - (s.intro.el || 0), playT0: Date.now() - (s.intro.pel != null ? s.intro.pel : s.intro.el || 0) } : null;
     if (INTRO.srv && INTRO.srv.st !== 'wait') introVideo();
@@ -1694,7 +1695,7 @@
   startPhoneLink();
   if (NET.room && !NET.hostview) setTimeout(introVideo, 1500);  // fetch the film early so it is ready when the host starts
 
-  var VEIL = { on: false, phase: null, t0: 0, a: 0, last: null };
+  var VEIL = { on: false, phase: null, t0: 0, a: 0, last: null, lastSky: null };
 
   // ---------- participant screens for the presenter ("CCTV"): every 1.5 s a small JPEG of what this phone draws
   // (left eye in VR) goes to the presenter page through the same server; nothing but the sky drawing is sent. ?nocam=1 turns it off.
@@ -1736,7 +1737,7 @@
     else if (VEIL.phase === 'in') { var vk2 = (now - VEIL.t0) / 1400; VEIL.a = 1 - easeS(vk2); if (vk2 >= 1) { VEIL.phase = null; VEIL.a = 0; } }
     else VEIL.on = wantStory;
     STORY.ev = VEIL.on ? (wantStory ? storyEval() : VEIL.last) : null;   // while fading out of a story, keep its last picture
-    if (STORY.ev) { VEIL.last = STORY.ev; if (netN % 20 === 0) syncTime(); }   // keep the clock on the scene's time
+    if (STORY.ev) { VEIL.last = STORY.ev; if (wantStory) VEIL.lastSky = SYNC.story && SYNC.story.sky && SYNC.sky ? SYNC.sky : null; if (netN % 20 === 0) syncTime(); }   // keep the clock on the scene's time
     if (STORY.ev) { st.minutes = STORY.ev.minutes; synced = true; }
     if (!synced && st.speed > 0 && st.mode !== 'menu') {
       st.minutes += dt * st.speed / 60;
@@ -1808,10 +1809,13 @@
       cut: 0.2, curve: 1.25 // keep only the band itself, not the haze around it
     });
   }
-  // the story plays on its own night; otherwise the presenter's choice, then this phone's own
+  // the story plays on the event night, or on the presenter's chosen night when they ask for it;
+  // the closing free look stays on the night the story used (SYNC.pin); otherwise the presenter's choice, then this phone's own
   function activeSky() {
-    if (STORY.ev) return null;
-    if (SYNC.has && SYNC.sky) return SYNC.sky;
+    var hostSky = SYNC.has && SYNC.sky ? SYNC.sky : null;
+    if (STORY.ev) return SYNC.story && SYNC.story.sky ? hostSky : (VEIL.lastSky || null);
+    if (NET.room && SYNC.has && SYNC.pin) return SYNC.pin === 'host' ? hostSky : null;
+    if (hostSky) return hostSky;
     return st.sky;
   }
   function baseSep() { return 360; } // ~63 mm on most phones (5.6-6 CSS px per mm)
@@ -2067,5 +2071,5 @@
     });
   }
   requestAnimationFrame(loop);
-  window.__sky = { intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
+  window.__sky = { skyKey: function () { return skyKey; }, intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
 })();

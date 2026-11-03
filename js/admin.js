@@ -121,7 +121,8 @@
     var mins = curMinutes();
     $('hClock').textContent = clockText(mins);
     if (document.activeElement !== $('hTime')) $('hTime').value = Math.round(mins);
-    useSky(curStory() ? null : (C.skyOk(ST.sky) ? ST.sky : null));
+    var hostSky = C.skyOk(ST.sky) ? ST.sky : null;
+    useSky(curStory() ? (ST.story.sky ? hostSky : null) : ST.pin ? (ST.pin === 'host' ? hostSky : null) : hostSky);
     renderSky();
     var M = C.eqjToEnu(S, mins);
     document.querySelectorAll('#hSpots button[data-spot]').forEach(function (b) {
@@ -269,7 +270,7 @@
   }
   function renderSky() {
     var k = curSky(), d = k.date.split('-');
-    $('hWhere').textContent = +d[0] + '. ' + +d[1] + '. ' + +d[2] + ' · ' + (k.name || (C.PLACES[k.place] || C.PLACES.osong).name) + (curStory() ? '  (이야기 중에는 관측회 날)' : '');
+    $('hWhere').textContent = +d[0] + '. ' + +d[1] + '. ' + +d[2] + ' · ' + (k.name || (C.PLACES[k.place] || C.PLACES.osong).name) + (curStory() && !ST.story.sky ? '  (이야기는 관측회 날 하늘로 진행 중)' : '');
     if (document.activeElement !== $('hDate')) $('hDate').value = k.date;
     document.querySelectorAll('[data-hplace]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-hplace') === (k.place || 'osong') ? 'true' : 'false'); });
     $('hSkyEvent').setAttribute('aria-pressed', k.date === C.EVENT.date ? 'true' : 'false');
@@ -391,6 +392,45 @@
     return t;
   }
   function curStory() { return ST && ST.story && showBy(ST.story.show) ? ST.story : null; }
+
+  // which night the story plays on: the event night (2026-11-01, what the scenes were written for) or the night chosen
+  // under '하늘 시각 · 날짜 · 장소'. Scenes whose target is below the horizon on that night are marked.
+  var storyHost = false;
+  try { storyHost = localStorage.getItem('osong-storysky') === 'host'; } catch (e) {}
+  function storyCmd(show, i) { cmd('story', { show: show, i: i, sky: storyHost }); }
+  function storySky() { var cs = curStory(); var host = cs ? !!cs.sky : storyHost; return host && ST && C.skyOk(ST.sky) ? ST.sky : null; }
+  var DSO_V = { '안드로메다은하': C.radec2vec(10.68, 41.27), '좀생이별': C.radec2vec(56.75, 24.12) };
+  function sceneTargetV(tg, minutes) {
+    if (tg.body) return C.radec2vec.apply(null, C.bodyRaDec(S, tg.body, minutes));
+    if (tg.cons) return consV(tg.cons);
+    if (tg.star) { var v = starV(tg.star); if (v) return v; for (var i = 0; i < S.named.length; i++) if (S.named[i][1].split(' ')[0] === tg.star) return starV(S.named[i][1]); return null; }
+    if (tg.dso) { for (var k in DSO_V) if (tg.dso.indexOf(k) === 0) return DSO_V[k]; }
+    return null;
+  }
+  var below = { key: '', list: [] };
+  function belowList(show) {
+    var sk = storySky(), key = show.id + '|' + (sk ? [sk.date, sk.lat, sk.lon].join(',') : 'event');
+    if (below.key === key) return below.list;
+    useSky(sk);
+    below.key = key; below.list = show.scenes.map(function (sc) {
+      var tg = sc.view && sc.view.target, m = sc.view ? sc.view.minutes : 90, v = tg && !tg.altaz ? sceneTargetV(tg, m) : null;
+      return v ? C.enuToAltAz(C.apply(C.eqjToEnu(S, m), v)).alt : 90;
+    });
+    return below.list;
+  }
+  function renderStorySky() {
+    $('sSkyEvent').setAttribute('aria-pressed', storyHost ? 'false' : 'true');
+    $('sSkyHost').setAttribute('aria-pressed', storyHost ? 'true' : 'false');
+    var hostSky = ST && C.skyOk(ST.sky) ? ST.sky : null, d = hostSky ? hostSky.date.split('-') : null;
+    $('sSkyHost').textContent = '고른 날짜' + (d ? ' (' + +d[1] + '/' + +d[2] + ')' : ' (지금은 관측회 날)');
+  }
+  function setStoryHost(v) {
+    storyHost = v; try { localStorage.setItem('osong-storysky', v ? 'host' : 'event'); } catch (e) {}
+    var cs = curStory(); if (cs) storyCmd(cs.show, cs.i);   // replays the current scene on the new night
+    below.key = ''; renderStory();
+  }
+  $('sSkyEvent').addEventListener('click', function () { setStoryHost(false); });
+  $('sSkyHost').addEventListener('click', function () { setStoryHost(true); });
   function renderStory() {
     var cs = curStory(), show = cs ? showBy(cs.show) : showBy($('sShow').value);
     if (!show) return;
@@ -408,11 +448,17 @@
         var li = document.createElement('li'), b = document.createElement('button');
         b.type = 'button'; b.innerHTML = '<span class="n"></span><span class="t"></span>';
         b.querySelector('.n').textContent = (j < 9 ? '0' : '') + (j + 1); b.querySelector('.t').textContent = sc.title;
-        b.addEventListener('click', function () { cmd('story', { show: show.id, i: j }); });
+        b.addEventListener('click', function () { storyCmd(show.id, j); });
         li.appendChild(b); list.appendChild(li);
       });
     }
     list.querySelectorAll('button').forEach(function (b, j) { if (j === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+    renderStorySky();
+    var alts = belowList(show), shown = cs ? i : 0, warnN = 0;
+    list.querySelectorAll('button').forEach(function (b, j) { var low = alts[j] < 0; b.classList.toggle('below', low); if (low) warnN++; b.title = low ? '이 날짜에는 이 장면의 대상이 지평선 아래예요' : ''; });
+    var sc0 = show.scenes[shown];
+    $('sWarn').textContent = alts[shown] < 0 ? '이 장면의 대상이 ' + clockText(sc0.view.minutes) + '에 지평선 아래예요 (높이 ' + Math.round(alts[shown]) + '°). 폰에는 ‘지평선 아래예요’ 안내가 떠요.'
+      : warnN ? '이 날짜에는 지평선 아래인 장면이 ' + warnN + '개 있어요 (목록에 표시).' : '';
     if (cs) {
       var sc = show.scenes[i];
       $('sTitle').textContent = (i + 1) + '. ' + (sc.title || '');
@@ -434,10 +480,10 @@
   $('sShow').addEventListener('change', function () { renderStory(); });
   $('sGo').addEventListener('click', function () {
     var cs = curStory(), show = showBy($('sShow').value); if (!show) return;
-    if (!cs || cs.show !== show.id) cmd('story', { show: show.id, i: 0 });
-    else if (cs.i + 1 < show.scenes.length) cmd('story', { show: show.id, i: cs.i + 1 });
+    if (!cs || cs.show !== show.id) storyCmd(show.id, 0);
+    else if (cs.i + 1 < show.scenes.length) storyCmd(show.id, cs.i + 1);
   });
-  $('sPrev').addEventListener('click', function () { var cs = curStory(); if (cs && cs.i > 0) cmd('story', { show: cs.show, i: cs.i - 1 }); });
+  $('sPrev').addEventListener('click', function () { var cs = curStory(); if (cs && cs.i > 0) storyCmd(cs.show, cs.i - 1); });
   $('sEnd').addEventListener('click', function () { cmd('story', { show: null }); });
   $('clStart').addEventListener('click', function () {
     var cs = curStory(), extra = { v: 'run', min: Math.max(0.25, Math.min(30, +$('clMin').value || 3)) };
