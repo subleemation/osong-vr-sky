@@ -1,6 +1,6 @@
 // Closing timer on the participant phones (started by the presenter's 마무리 타이머 button).
 // While it runs, a small countdown sits at the top of the view; when it ends (or the presenter ends it early)
-// the sky dims and "헤드셋을 천천히 벗어 주세요" appears, the same picture in both eyes.
+// the screen goes black and "헤드셋을 천천히 벗어 주세요" appears, the same picture in both eyes.
 // The presenter sends { timer: { st: 'run', at, dur } | { st: 'done', at } } inside the show state (server clock, ms).
 var EndTimer = (function () {
   'use strict';
@@ -31,8 +31,8 @@ var EndTimer = (function () {
     g.textAlign = 'center'; g.textBaseline = 'middle';
     if (x.run) {
       for (var i = 0; i < eyes.length; i++) {
-        var E = eyes[i], fs = Math.max(13, Math.min(18, E.R / 11)), y = mode === 'vr' ? E.cy - E.R * 0.5 : 26;
-        var txt = '자유 관찰 ' + fmt(x.left);
+        var E = eyes[i], fs = mode === 'vr' ? Math.max(14, Math.min(20, E.R / 10)) : 17, y = mode === 'vr' ? E.cy - E.R * 0.52 : 104;
+        var txt = '자유 관찰 · 남은 시간 ' + fmt(x.left);
         g.font = '500 ' + Math.round(fs) + 'px "IBM Plex Sans KR", sans-serif';
         var tw = g.measureText(txt).width + fs * 1.4;
         g.fillStyle = 'rgba(7,9,16,0.72)'; g.fillRect(E.cx - tw / 2, y - fs * 0.85, tw, fs * 1.7);
@@ -41,9 +41,10 @@ var EndTimer = (function () {
       }
       return;
     }
-    // the end: dim the sky over a second, then the message
-    var a = Math.min(1, x.since / 1200);
-    g.fillStyle = 'rgba(0,0,0,' + (0.72 * a).toFixed(3) + ')'; g.fillRect(0, 0, W, H);
+    // the end: the sky goes fully black (0.8 s), then the message fades in on the black
+    var a = Math.min(1, x.since / 800);
+    g.fillStyle = 'rgba(0,0,0,' + a.toFixed(3) + ')'; g.fillRect(0, 0, W, H);
+    a = Math.max(0, Math.min(1, (x.since - 600) / 900));
     for (var j = 0; j < eyes.length; j++) {
       var F = eyes[j], vr = mode === 'vr', f1 = vr ? Math.max(15, Math.min(24, F.R / 8)) : Math.max(16, Math.min(30, F.R / 6.5)), mw = vr ? F.R * 1.4 : W - 32;
       g.globalAlpha = a;

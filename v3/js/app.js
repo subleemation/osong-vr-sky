@@ -204,6 +204,7 @@
   var guest = null;
   var local = null; // { id, scene, start } when playing a show alone: scenes advance by themselves
   var showOn = false, showJoin = 0, joinCam = null, showYaw = 0, vrStep = { index: -1, goal: 0 };
+  var freeOn = false, freeAt = 0;   // closing timer running: the show's last sky stays, but looking around works like normal viewing
   var LOCAL_HOLD = 14; // seconds a scene stays up after its animation when playing alone
   function activeShow() {
     if (guest) {
@@ -316,7 +317,17 @@
     if (!a && showOn) onShowEnd();
     var ev = a ? ShowTimeline.evaluate(eng, a.show, a.scene, a.t) : null;
 
-    if (ev) { st.minutes = ev.minutes; syncTime(); }
+    // free observation: while the presenter's closing timer runs, keep the show's sky but let people look around,
+    // gaze at constellations and read about them (the show stops steering the view)
+    var et = window.EndTimer ? EndTimer.state() : null, free = !!(ev && et && et.run), freeLim = null;
+    if (free !== freeOn) {
+      freeOn = free; freeAt = now; resetGaze();
+      if (!free && ev) { joinCam = { yaw: st.yaw, pitch: st.pitch, fov: st.zoomFov }; showJoin = now; }
+      $('hint').hidden = st.mode !== 'screen' || (showOn && !free);
+      $('hint').textContent = free ? '끌어서 둘러보기 · 가운데 동그라미에 별자리를 두면 설명이 나와요' : '끌어서 둘러보기 · 두 손가락으로 확대';
+    }
+    if (free) { st.minutes = ev.minutes; syncTime(); freeLim = ev.lim; ev = null; }
+    else if (ev) { st.minutes = ev.minutes; syncTime(); }
     else if (st.speed > 0 && st.mode !== 'menu') {
       st.minutes += dt * st.speed / 60;
       if (st.minutes > 210) st.minutes = 30;
@@ -368,6 +379,7 @@
       warp: st.warp, vrFov: st.fov, sep: baseSep() + st.ipdAdj,
       reticle: st.mode !== 'menu', panel: PANEL
     };
+    if (freeLim != null) o.lim = freeLim;
     if (ev) {
       o.highlight = ev.highlight; o.figures = ev.figures; o.pointer = ev.pointer;
       o.lineCons = ev.lineCons; o.labelAlpha = ev.labelAlpha; o.trails = ev.trails; o.eyepiece = ev.eyepiece; o.photoGrow = ev.photoGrow;
@@ -385,14 +397,15 @@
         var fa2 = altAz(st.cam.f);
         o.top = clockText(st.minutes) + '  ' + DIRS[Math.round(fa2.az / 45) % 8] + '  고도 ' + Math.round(fa2.alt) + '°';
         if (sel && !PANEL.open) o.card = { name: sel.name, kind: sel.kind, text: sel.text, t: gaze.t };
-        if (!PANEL.open && now - st.vrT < 12000) o.hint = '고개를 숙여 발밑을 보면 설정이 나와요';
+        if (!PANEL.open && freeOn && now - freeAt < 10000) o.hint = '별자리를 2초쯤 바라보면 그림과 설명이 나와요';
+        else if (!PANEL.open && now - st.vrT < 12000) o.hint = '고개를 숙여 발밑을 보면 설정이 나와요';
       }
     }
     var fr2 = eng.render(o);
     if (window.PhoneCam) {
       var fa3 = altAz(st.cam.f), ist = window.VRIntro ? VRIntro.state().state : '';
       PhoneCam.frame(st.mode, DIRS[Math.round(((fa3.az % 360) + 360) % 360 / 45) % 8] + ' ' + Math.round(fa3.alt) + '°',
-        ist !== 'ACTIVE' && ist ? (ist === 'IDLE' ? '대기' : '오프닝') : ev ? '쇼 ' + (ev.index + 1) + '장면' : '');
+        ist !== 'ACTIVE' && ist ? (ist === 'IDLE' ? '대기' : '오프닝') : ev ? '쇼 ' + (ev.index + 1) + '장면' : freeOn ? '자유 관찰' : '');
     }
 
     if (st.mode === 'screen') {
@@ -492,7 +505,7 @@
     if (showOn) { VEIL.phase = 'in'; VEIL.t0 = performance.now(); VEIL.a = 1; }   // joining a running show: fade in instead of popping in
     $('menu').hidden = true;
     $('hud').hidden = mode !== 'screen';
-    $('hint').hidden = mode !== 'screen' || showOn;
+    $('hint').hidden = mode !== 'screen' || (showOn && !freeOn);
     lastCardKey = null; resetGaze();
     if (mode === 'screen') {
       var fa = altAz(st.cam.f); st.yaw = fa.az; st.pitch = 30;
@@ -589,7 +602,7 @@
   canvas.addEventListener('pointermove', function (e) {
     if (st.mode !== 'screen' || !pointers[e.pointerId]) return;
     var p = pointers[e.pointerId], ids = Object.keys(pointers);
-    if (!showOn) {
+    if (!showOn || freeOn) {
       if (ids.length === 1) {
         var degPerPx = st.zoomFov / Math.max(W, H);
         st.yaw = (st.yaw - (e.clientX - p.x) * degPerPx + 360) % 360;
@@ -606,12 +619,12 @@
   function up(e) { delete pointers[e.pointerId]; if (Object.keys(pointers).length < 2) pinch0 = 0; }
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
   canvas.addEventListener('wheel', function (e) {
-    if (st.mode !== 'screen' || showOn) return;
+    if (st.mode !== 'screen' || (showOn && !freeOn)) return;
     e.preventDefault();
     st.zoomFov = clamp(st.zoomFov * (e.deltaY > 0 ? 1.08 : 0.93), 25, 110);
   }, { passive: false });
   document.addEventListener('keydown', function (e) {
-    if (st.mode !== 'screen' || showOn) return;
+    if (st.mode !== 'screen' || (showOn && !freeOn)) return;
     if (e.key === 'ArrowLeft') st.yaw = (st.yaw - 5 + 360) % 360;
     if (e.key === 'ArrowRight') st.yaw = (st.yaw + 5) % 360;
     if (e.key === 'ArrowUp') st.pitch = Math.min(89, st.pitch + 5);
