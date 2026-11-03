@@ -213,3 +213,10 @@ input[type=date] {
 #qzOpts button.wrong { opacity: 0.45; }
 #qzMsg { margin: 10px 0 0; font-size: 14px; color: var(--dusk); line-height: 1.5; }
 #qzMsg:empty { display: none; }
+
+/* from the presenter's QR (body.guest): only "VR로 보기" and a short how-to; on its own: everything plus the manual */
+body:not(.guest) .guest-only { display: none !important; }
+body.guest .solo-only { display: none !important; }
+body.guest .go { grid-template-columns: 1fr; }
+.card h3.mh { margin: 14px 0 6px; font-size: 14px; font-weight: 700; color: #e8cf8a; }
+.card h3.mh:first-of-type { margin-top: 2px; }

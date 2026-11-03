@@ -188,3 +188,30 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
 .qzopts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; }
 .qzopts label { display: flex; gap: 6px; align-items: center; }
 .qzmake > div { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
+
+/* closing timer */
+.clstate { font-family: var(--mono); font-weight: 700; color: var(--amber); }
+.clmin { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+.clmin input { width: 52px; text-align: center; }
+
+/* participant screens (js/cctv.js): real snapshots sent by the phones */
+.cctv-block { display: flex; flex-direction: column; gap: 8px; }
+.cctv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cctv-head b { color: var(--ink); margin-left: 4px; }
+.cctv-head small { color: var(--faint); font-size: 12px; margin-left: 6px; }
+.cctv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cctv-empty { grid-column: 1 / -1; margin: 0; padding: 12px 0; font-size: 13px; color: var(--muted); }
+.cam { margin: 0; position: relative; background: #000; border: 1px solid var(--line); border-radius: 6px; aspect-ratio: 4 / 3; overflow: hidden; }
+.cam img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam figcaption { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; align-items: baseline; padding: 3px 6px; font-size: 11px; color: var(--muted); background: linear-gradient(transparent, rgba(0,0,0,0.85)); }
+.cam figcaption b { font-weight: 700; color: var(--ink); }
+.cam figcaption em { margin-left: auto; font-style: normal; color: var(--amber); }
+.cam.stale { opacity: 0.4; }
+.cam.stale figcaption em::after { content: ' 끊김?'; color: var(--red); }
+#cctvWall { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column; }
+.cctv-wall-head { display: flex; align-items: baseline; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.cctv-wall-head b { font-size: 20px; }
+.cctv-wall-head .hb { margin-left: auto; }
+.cctv-wall-body { flex: 1; overflow-y: auto; padding: 14px 20px 24px; }
+.cctv-grid.big { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.cctv-grid.big .cam figcaption { font-size: 13px; padding: 5px 8px; }
