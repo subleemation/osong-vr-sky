@@ -1,0 +1,5 @@
+assets/saturn.webp
+Source: https://esahubble.org/images/heic0904a/ (Hubble, 24 February 2009)
+Credit: NASA, ESA and the Hubble Heritage Team (STScI/AURA)
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+Changes: cropped, black sky made transparent, resized (tools/build-saturn.py)
