@@ -34,9 +34,9 @@ export class Room {
   async save(s) { await this.ctx.storage.put('s', s); }
 
   minutes(s) {
-    let m = s.time + ((Date.now() - s.timeAt) / 60000) * s.speed;
-    if (m > 180) m = 30 + ((m - 30) % 150);
-    return m;
+    // minutes after 18:00, over the whole night (18:00–06:00); time can run backwards too
+    const m = s.time + ((Date.now() - s.timeAt) / 60000) * s.speed;
+    return ((m % 720) + 720) % 720;
   }
   pack(s, admin) {
     const tm = s.timer;
@@ -47,6 +47,9 @@ export class Room {
       view: this.view || s.view || null,
       art: typeof s.art === 'boolean' ? s.art : null,
       story: s.story ? { show: s.story.show, i: s.story.i, el: Date.now() - s.story.at } : null,
+      sky: s.sky || null,
+      disp: s.disp || null,
+      quiz: s.quiz || null,
       intro: s.intro ? { st: s.intro.st, n: s.intro.n, len: s.intro.len, el: Date.now() - s.intro.at, pel: Date.now() - (s.intro.pat || s.intro.at) } : null,
     };
     return JSON.stringify(out);
@@ -57,13 +60,17 @@ export class Room {
   }
   counts() {
     let phones = 0, vr = 0, admins = 0, film = 0, filmFail = 0;
+    const quiz = { n: this.qn || 0, answered: 0, tally: {} }; // answers to the open quiz
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() || {};
       if (a.role === 'admin') admins++;
       else if (a.mode === 'host' || a.mode === 'sim') continue; // host's own sky view and preview pages are not participants
-      else { phones++; if (a.mode === 'vr') vr++; if (a.vid === 'ready') film++; else if (a.vid === 'fail') filmFail++; }
+      else {
+        phones++; if (a.mode === 'vr') vr++; if (a.vid === 'ready') film++; else if (a.vid === 'fail') filmFail++;
+        if (a.qa && a.qa.n === this.qn) { quiz.answered++; quiz.tally[a.qa.a] = (quiz.tally[a.qa.a] || 0) + 1; }
+      }
     }
-    return { k: 'counts', phones, vr, admins, film, filmFail };
+    return { k: 'counts', phones, vr, admins, film, filmFail, quiz };
   }
   pushCounts() {
     const c = JSON.stringify(this.counts());
@@ -79,6 +86,7 @@ export class Room {
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ role: 'phone', mode: 'menu' });
     const s = await this.load();
+    this.qn = s.quiz ? s.quiz.n : 0;
     server.send(this.pack(s));
     this.pushCounts();
     return new Response(null, { status: 101, webSocket: client });
@@ -109,6 +117,12 @@ export class Room {
       const out = JSON.stringify({ k: 'cam', id: att.cid, img: m.img, m: String(m.m || '').slice(0, 8), d: String(m.d || '').slice(0, 24), s: String(m.s || '').slice(0, 12), t: now });
       for (const w of this.ctx.getWebSockets()) { const a = w.deserializeAttachment() || {}; if (a.role === 'watch') { try { w.send(out); } catch (e) {} } }
       return;
+    }
+    if (m.k === 'ans') { // a phone's quiz answer: option index, or 1 for "found it"
+      const s = await this.load();
+      if (att.role !== 'phone' || !s.quiz || s.quiz.st !== 'open' || m.n !== s.quiz.n) return;
+      att.qa = { n: s.quiz.n, a: this.clip(m.a, 0, 3, 0) | 0 }; ws.serializeAttachment(att);
+      this.qn = s.quiz.n; this.pushCounts(); return;
     }
     if (m.k === 'hi') {
       att.mode = ['vr', 'screen', 'host', 'sim'].includes(m.m) ? m.m : 'menu';
@@ -146,6 +160,7 @@ export class Room {
     await this.save(s);
     await this.arm(s);
     this.broadcast(s);
+    if (m.c === 'quiz') this.pushCounts();
   }
 
   setTimer(s, ms, label, src) {
@@ -191,13 +206,41 @@ export class Room {
       case 'pause': if (s.timer) { if (s.timer.paused) { s.timer.paused = false; s.timer.end = now + s.timer.rem; } else { s.timer.rem = Math.max(0, s.timer.end - now); s.timer.paused = true; } } break;
       case 'phase': if (!s.plan && (m.v === 'guide' || m.v === 'free')) { s.phase = m.v; if (m.v === 'free') s.spot = null; } break;
       case 'spot': s.spot = typeof m.v === 'string' ? m.v.slice(0, 12) : null; if (s.spot && !s.plan && s.phase !== 'guide') s.phase = 'guide'; break;
-      case 'time': s.time = this.clip(m.v, 30, 180, 90); s.timeAt = now; break;
-      case 'speed': s.time = this.minutes(s); s.timeAt = now; s.speed = [0, 1, 60].includes(Number(m.v)) ? Number(m.v) : 0; break;
+      case 'time': s.time = this.clip(m.v, 0, 720, 90); s.timeAt = now; break;
+      case 'step': s.time = ((this.minutes(s) + this.clip(m.v, -720, 720, 0)) % 720 + 720) % 720; s.timeAt = now; break; // jump forward / back
+      case 'speed': s.time = this.minutes(s); s.timeAt = now; s.speed = [-600, -60, -10, 0, 1, 10, 60, 600].includes(Number(m.v)) ? Number(m.v) : 0; break;
+      case 'show': { // what every phone draws: true / false, or null to leave it to each phone
+        const keys = ['lines', 'names', 'stars', 'art', 'trails', 'mw', 'dirs'];
+        if (!keys.includes(m.key)) break;
+        s.disp = Object.assign({}, s.disp); s.disp[m.key] = typeof m.v === 'boolean' ? m.v : undefined;
+        if (m.key === 'art') s.art = typeof m.v === 'boolean' ? m.v : null;
+        break;
+      }
+      case 'quiz': { // 'open' a question, 'reveal' the answer, 'off'
+        if (m.v === 'open' && m.q && typeof m.q === 'object') {
+          const q = m.q, str = (x, n) => String(x || '').slice(0, n);
+          const opts = Array.isArray(q.opts) ? q.opts.slice(0, 4).map((o) => str(o, 24)) : [];
+          const tg = q.target && typeof q.target === 'object' ? { kind: str(q.target.kind, 6), id: str(q.target.id, 24), name: str(q.target.name, 24) } : null;
+          if (q.type === 'choice' && opts.length < 2) break;
+          if (q.type === 'find' && !tg) break;
+          s.quiz = { n: ((s.quiz && s.quiz.n) || 0) + 1, st: 'open', at: now, type: q.type === 'find' ? 'find' : 'choice', q: str(q.q, 80), opts, ans: this.clip(q.ans, 0, 3, 0) | 0, target: tg, ex: str(q.ex, 140) };
+          this.qn = s.quiz.n;
+        } else if (m.v === 'reveal' && s.quiz) s.quiz.st = 'reveal';
+        else if (m.v === 'off') s.quiz = null;
+        break;
+      }
       case 'timer': if (!s.plan) { this.setTimer(s, this.clip(m.min, 0, 180, 0) * 60000, String(m.label || '').slice(0, 12), 'manual'); if (s.timer && s.phase === 'idle') s.phase = 'free'; } break;
       case 'note': s.note = String(m.v || '').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'hold': s.hold = !!m.v; if (s.hold) s.note = String(m.note || '헤드셋을 벗고 앞을 봐 주세요').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'art': s.art = typeof m.v === 'boolean' ? m.v : null; break;
       case 'story': s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now } : null; if (s.story) s.hold = false; break;
+      case 'sky': { // which evening and place every phone shows outside the story (null = the event night)
+        const d = typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : null;
+        const lat = Number(m.lat), lon = Number(m.lon), tz = Number(m.tz);
+        s.sky = d && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && Math.abs(tz) <= 14
+          ? { date: d, lat, lon, tz, place: String(m.place || '').slice(0, 12), name: String(m.name || '').slice(0, 16) } : null;
+        break;
+      }
       case 'reset': Object.assign(s, FRESH()); this.view = null; break;
     }
   }

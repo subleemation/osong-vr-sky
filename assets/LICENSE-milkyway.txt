@@ -1,0 +1,5 @@
+assets/milkyway_4k.jpg
+Source: NASA/Goddard Space Flight Center Scientific Visualization Studio, "Deep Star Maps 2020"
+https://svs.gsfc.nasa.gov/4851 (milkyway_2020_4k.exr). Gaia DR2: ESA/Gaia/DPAC.
+NASA visualizations are generally not subject to copyright in the United States; credit as above.
+Converted with tools/build-milkyway.py (asinh stretch, slight blur, JPEG).

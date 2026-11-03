@@ -4,6 +4,7 @@
 //   move    앞 장면에서 넘어오는 데 걸리는 초     start  첫 장면이 시작하는 곳
 //   fx      연출 (at: 시작 초, dur: 길이)
 //           timelapse(from,to: 분) · lightsOut(from,to: 등급) · labels(from,to: 0~1) · lines(cons) · art(cons, stagger) · pointer(from,to: 별 이름)
+//           eyepiece(body) 망원경 시야에 허블 토성 사진
 //   keepArt 앞 장면에서 이어서 보여 줄 별자리 그림
 //   title, sub  휴대폰 자막   cue  진행자 화면에 크게 뜨는 참여 질문   note  진행자 대본
 // 시각(minutes)은 오후 6시부터 지난 분이에요. 92 = 오후 7시 32분.
@@ -34,8 +35,8 @@ window.STORY_SHOWS = [
         note: '북쪽 하늘의 별들은 밤새 북극성을 가운데 두고 크게 원을 그려요. 북극성은 지평선에서 37도, 주먹 네 개쯤 높이에 있어요. W 모양 카시오페이아에서 점선을 따라가면 찾을 수 있어요.' },
 
       { view: { target: { body: 'Saturn' }, fov: 40, minutes: 92 }, move: 7,
-        fx: [],
-        title: '오늘의 주인공, 토성', sub: '깜빡이지 않고 차분하게 빛나는 노란 점',
+        fx: [{ type: 'eyepiece', body: 'Saturn', at: 9, dur: 2 }],
+        title: '오늘의 주인공, 토성', sub: '맨눈에는 차분한 노란 점, 망원경에는 고리',
         cue: '별과 행성은 어떻게 구별할까요?',
         note: '남동쪽에서 차분하게 빛나는 노란 점이 토성이에요. 별은 반짝반짝 깜빡이지만 행성은 덜 깜빡여요. 지구에서 약 13억 km, 빛으로 70분쯤 걸리는 거리예요. 지금은 물고기자리 아래쪽, 고래자리와의 경계 가까이에 있어요.' },
 
