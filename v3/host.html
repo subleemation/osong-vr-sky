@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/app.css?v=7">
-<link rel="stylesheet" href="css/host.css?v=10">
+<link rel="stylesheet" href="css/host.css?v=11">
 </head>
 <body class="host">
 <div class="host-grid">
@@ -29,7 +29,7 @@
   <aside class="console">
     <header class="con-head">
       <div>
-        <p class="meta"><span>진행자 콘솔</span><span>2026.11.01</span></p>
+        <p class="meta"><span>진행자 콘솔</span><span id="metaDate">2026.11.01</span></p>
         <h1 class="con-title">별이 빛나는 밤에</h1>
       </div>
       <div class="room"><span>방 코드</span><b id="roomCode">----</b></div>
@@ -47,6 +47,15 @@
           <button type="button" class="btn-line" id="newRoom">새 방 코드</button>
         </div>
       </div>
+    </section>
+
+    <section class="con-block date-block">
+      <div class="con-label"><span>하늘 날짜</span><span class="aside" id="dateState"></span></div>
+      <div class="transport">
+        <input type="date" id="hostDate" class="date-in" value="2026-11-01" min="1700-01-01" max="2300-12-31" aria-label="하늘 날짜">
+        <button type="button" class="tbtn" id="hostToday">오늘</button>
+      </div>
+      <p class="intro-state" id="dateText">접속한 휴대폰은 모두 이 날짜의 오송 하늘을 봐요. 쇼의 시각(19:32 등)은 이 날짜 기준이에요.</p>
     </section>
 
     <section class="con-block intro-block">
@@ -125,15 +134,17 @@
 <script src="js/config.js?v=7"></script>
 <script src="vendor/qrcode.js"></script>
 <script src="js/sky-data.js?v=7"></script>
-<script src="js/sky-core.js?v=7"></script>
-<script src="js/content.js?v=7"></script>
+<script src="js/sky-core.js?v=8"></script>
+<script src="vendor/astronomy.browser.min.js?v=2.1.19"></script>
+<script src="js/skytime.js?v=1"></script>
+<script src="js/content.js?v=8"></script>
 <script src="js/figures-data.js?v=7"></script>
 <script src="js/skygl.js?v=7"></script>
 <script src="js/photos.js?v=1"></script>
-<script src="js/engine.js?v=12"></script>
+<script src="js/engine.js?v=13"></script>
 <script src="js/shows.js?v=13"></script>
-<script src="js/sync.js?v=9"></script>
-<script src="js/host.js?v=11"></script>
+<script src="js/sync.js?v=10"></script>
+<script src="js/host.js?v=12"></script>
 <script src="js/cctv.js?v=1"></script>
 </body>
 </html>

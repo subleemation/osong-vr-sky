@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="css/app.css?v=8">
+<link rel="stylesheet" href="css/app.css?v=9">
 <style>body.intro-on #info, body.intro-on #caption, body.intro-on #hint, body.intro-on .hud-clock, body.intro-on #hudLive { visibility: hidden; } body.intro-on #backBtn { opacity: 0.25; }</style>
 </head>
 <body>
@@ -18,9 +18,9 @@
 <main id="menu">
   <div class="sheet">
     <header class="mast">
-      <p class="meta"><span>2026.11.01 일</span><span>오송호수공원</span><span>36.64N 127.33E</span></p>
+      <p class="meta"><span id="metaDate">2026.11.01 일</span><span>오송호수공원</span><span>36.64N 127.33E</span></p>
       <h1>별이 빛나는 밤에</h1>
-      <p class="lede solo-only">오늘 저녁 오송 하늘에 실제로 뜰 별과 별자리, 토성을 미리 둘러보는 VR이에요. 구름이 끼어도 볼 수 있어요.</p>
+      <p class="lede solo-only">오송 하늘에 실제로 뜨는 별과 별자리, 행성, 달을 둘러보는 VR이에요. 날짜와 시각을 골라 오늘 밤도, 지난 밤도, 먼 미래의 밤도 볼 수 있어요.</p>
       <p class="lede guest-only">진행자와 함께 보는 화면이에요. <b>VR로 보기</b>만 누르면, 그다음은 진행자가 안내하는 대로 따라가요.</p>
     </header>
 
@@ -35,14 +35,21 @@
     <p class="notice" id="sensorNote" hidden></p>
 
     <section class="block solo-only" aria-labelledby="hTime">
-      <h2 id="hTime">시각</h2>
+      <h2 id="hTime">언제 하늘을 볼까요</h2>
+      <div class="field datefield">
+        <div class="label"><label for="skyDate">날짜</label><span class="val" id="dateNote"></span></div>
+        <div class="daterow">
+          <input type="date" id="skyDate" value="2026-11-01" min="1700-01-01" max="2300-12-31">
+          <button type="button" class="btn-line" id="nowBtn">지금</button>
+        </div>
+      </div>
       <div class="field">
         <div class="clock" id="clockMenu">19:30<small>KST</small></div>
         <p class="skystate" id="skyState"></p>
       </div>
       <div class="field">
-        <input type="range" id="time" min="30" max="180" step="5" value="90" aria-label="시각 (오후 6시 30분부터 9시까지)">
-        <div class="ticks" aria-hidden="true"><span>18:30</span><span>19:00</span><span>19:30</span><span>20:00</span><span>20:30</span><span>21:00</span></div>
+        <input type="range" id="time" min="0" max="720" step="5" value="90" aria-label="시각 (저녁 6시부터 다음 날 아침 6시까지)">
+        <div class="ticks" aria-hidden="true"><span>18:00</span><span>21:00</span><span>00:00</span><span>03:00</span><span>06:00</span></div>
       </div>
       <div class="field">
         <div class="label"><span>시간 흐름</span></div>
@@ -126,7 +133,7 @@
       <h3 class="sub">화면으로 보기</h3>
       <ol class="steps">
         <li>손가락으로 <b>끌어서</b> 하늘을 둘러보고, <b>두 손가락</b>으로 확대해요.</li>
-        <li>위의 <b>시각</b>으로 저녁 6시 30분부터 9시까지 하늘이 어떻게 변하는지 볼 수 있어요.</li>
+        <li>위의 <b>언제 하늘을 볼까요</b>에서 날짜를 고르고, 저녁 6시부터 다음 날 아침 6시까지 시각을 움직여 볼 수 있어요. <b>지금</b>을 누르면 지금 이 순간의 하늘로 맞춰져요.</li>
         <li><b>보이는 것</b>에서 별자리 선·이름, 은하수, 동서남북을 켜고 끌 수 있어요.</li>
         <li>야간 적색 모드는 어두운 곳에서 눈이 밝기에 익은 상태를 지켜 줘요.</li>
       </ol>
@@ -135,7 +142,7 @@
       <p class="fine">어지러우면 바로 벗고 쉬어요. 어린이는 한 번에 3분 정도가 좋아요.</p>
     </section>
 
-    <p class="foot">별 5,044개 · 88개 별자리 · 행성 위치는 2026-11-01 18:00–21:30 KST 기준으로 계산했어요.<br>달은 밤 11시 18분에 떠서 관측 시간에는 보이지 않아요.<br>별자리 그림: Johan Meuris / Stellarium, <a href="https://artlibre.org/licence/lal/en/" style="color:inherit">Free Art License</a>. 은하수: NASA/GSFC Scientific Visualization Studio, Deep Star Maps 2020. 안드로메다은하·좀생이별 사진: HG731GZ / Stellarium, <a href="https://creativecommons.org/licenses/by/3.0/" style="color:inherit">CC BY 3.0</a>. 토성 사진: NASA, ESA and the Hubble Heritage Team (STScI/AURA), <a href="https://creativecommons.org/licenses/by/4.0/" style="color:inherit">CC BY 4.0</a>. 별 목록: d3-celestial(BSD).</p>
+    <p class="foot">별 5,044개 · 88개 별자리 · 해, 달, 행성 위치는 고른 날짜에 맞춰 바로 계산해요(astronomy-engine, MIT). 별은 J2000 위치를 써서, 수백 년 넘게 떨어진 날짜에서는 조금씩 어긋날 수 있어요.<br>별자리 그림: Johan Meuris / Stellarium, <a href="https://artlibre.org/licence/lal/en/" style="color:inherit">Free Art License</a>. 은하수: NASA/GSFC Scientific Visualization Studio, Deep Star Maps 2020. 안드로메다은하·좀생이별 사진: HG731GZ / Stellarium, <a href="https://creativecommons.org/licenses/by/3.0/" style="color:inherit">CC BY 3.0</a>. 토성 사진: NASA, ESA and the Hubble Heritage Team (STScI/AURA), <a href="https://creativecommons.org/licenses/by/4.0/" style="color:inherit">CC BY 4.0</a>. 별 목록: d3-celestial(BSD).</p>
   </div>
 </main>
 
@@ -187,17 +194,19 @@
 
 <script src="js/config.js?v=7"></script>
 <script src="js/sky-data.js?v=7"></script>
-<script src="js/sky-core.js?v=7"></script>
-<script src="js/content.js?v=7"></script>
+<script src="js/sky-core.js?v=8"></script>
+<script src="vendor/astronomy.browser.min.js?v=2.1.19"></script>
+<script src="js/skytime.js?v=1"></script>
+<script src="js/content.js?v=8"></script>
 <script src="js/figures-data.js?v=7"></script>
 <script src="js/skygl.js?v=7"></script>
 <script src="js/photos.js?v=1"></script>
-<script src="js/engine.js?v=12"></script>
+<script src="js/engine.js?v=13"></script>
 <script src="js/shows.js?v=13"></script>
-<script src="js/sync.js?v=9"></script>
+<script src="js/sync.js?v=10"></script>
 <script src="js/intro.js?v=9"></script>
 <script src="js/endtimer.js?v=2"></script>
 <script src="js/phonecam.js?v=1"></script>
-<script src="js/app.js?v=15"></script>
+<script src="js/app.js?v=16"></script>
 </body>
 </html>
