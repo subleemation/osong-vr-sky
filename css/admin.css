@@ -215,3 +215,9 @@ input[type=text], input[type=number], select { height: 36px; padding: 0 12px; bo
 .cctv-wall-body { flex: 1; overflow-y: auto; padding: 14px 20px 24px; }
 .cctv-grid.big { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 .cctv-grid.big .cam figcaption { font-size: 13px; padding: 5px 8px; }
+
+/* story night + scenes whose target is below the horizon on that night */
+.sky-pick .hb[aria-pressed="true"] { border-color: var(--amber); color: var(--ink); }
+.swarn { margin: 0; font-size: 13px; color: var(--red); }
+.swarn:empty { display: none; }
+.slist button.below .t::after { content: "  지평선 아래"; font-size: 11px; color: var(--red); font-weight: 400; }
