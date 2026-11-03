@@ -22,7 +22,7 @@ function safeEq(a, b) {
   return d === 0;
 }
 
-const FRESH = () => ({ phase: 'idle', time: 90, timeAt: Date.now(), speed: 0, spot: null, note: '', hold: false, timer: null, plan: null });
+const FRESH = () => ({ phase: 'idle', time: 90, timeAt: Date.now(), speed: 0, spot: null, note: '', hold: false, timer: null, plan: null, close: null });
 
 export class Room {
   constructor(ctx, env) {
@@ -42,7 +42,7 @@ export class Room {
     const tm = s.timer;
     const out = {
       k: 'state', phase: s.phase, time: this.minutes(s), speed: s.speed, spot: s.spot, note: s.note, hold: s.hold,
-      timer: tm ? { rem: tm.paused ? tm.rem : Math.max(0, tm.end - Date.now()), total: tm.total, label: tm.label, paused: !!tm.paused } : null,
+      timer: tm ? { rem: tm.paused ? tm.rem : Math.max(0, tm.end - Date.now()), total: tm.total, label: tm.label, paused: !!tm.paused, closing: tm.src === 'closing' } : null,
       plan: s.plan ? { order: s.plan.order, i: s.plan.i, n: s.plan.steps.length, label: s.plan.steps[s.plan.i].l } : null,
       view: this.view || s.view || null,
       art: typeof s.art === 'boolean' ? s.art : null,
@@ -51,6 +51,7 @@ export class Room {
       disp: s.disp || null,
       quiz: s.quiz || null,
       intro: s.intro ? { st: s.intro.st, n: s.intro.n, len: s.intro.len, el: Date.now() - s.intro.at, pel: Date.now() - (s.intro.pat || s.intro.at) } : null,
+      close: s.close ? { el: Date.now() - s.close.at } : null,   // closing timer ran out: phones go black with "take the headset off"
     };
     return JSON.stringify(out);
   }
@@ -64,7 +65,7 @@ export class Room {
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() || {};
       if (a.role === 'admin') admins++;
-      else if (a.mode === 'host' || a.mode === 'sim') continue; // host's own sky view and preview pages are not participants
+      else if (a.role === 'watch' || a.mode === 'host' || a.mode === 'sim') continue; // the presenter's CCTV wall is not a participant // host's own sky view and preview pages are not participants
       else {
         phones++; if (a.mode === 'vr') vr++; if (a.vid === 'ready') film++; else if (a.vid === 'fail') filmFail++;
         if (a.qa && a.qa.n === this.qn) { quiz.answered++; quiz.tally[a.qa.a] = (quiz.tally[a.qa.a] || 0) + 1; }
@@ -188,7 +189,7 @@ export class Room {
         s.plan = { order: m.order === 'FG' ? 'FG' : 'GF', steps, i: 0 }; this.planEnter(s, 0); break;
       }
       case 'next': this.planNext(s); break;
-      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; break;
+      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; s.close = null; break;
       case 'intro': {
         // opening film: wait (everyone black) → play → (skip) ; phones run the timeline themselves from 'at'
         const cur = s.intro, n = ((cur && cur.n) || 0) + 1;
@@ -198,7 +199,7 @@ export class Room {
         } else if (m.v === 'skip') {
           if (cur && cur.st === 'play' && now - cur.at < 70000) s.intro = { st: 'skip', n: cur.n, at: now, pat: cur.pat, len: cur.len };
         } else if (m.v === 'wait') {
-          s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null;
+          s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.close = null;
           s.intro = { st: 'wait', n, at: now, pat: now };
         } else if (m.v === 'off') s.intro = null;
         break;
@@ -233,7 +234,16 @@ export class Room {
       case 'note': s.note = String(m.v || '').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'hold': s.hold = !!m.v; if (s.hold) s.note = String(m.note || '헤드셋을 벗고 앞을 봐 주세요').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'art': s.art = typeof m.v === 'boolean' ? m.v : null; break;
-      case 'story': s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now } : null; if (s.story) s.hold = false; break;
+      case 'story': s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now } : null; if (s.story) { s.hold = false; s.close = null; } break;
+      case 'closing': { // the last free look: a countdown on every phone, then black with "take the headset off"
+        if (m.v === 'run') {
+          if (Number.isFinite(Number(m.time))) { s.time = this.clip(m.time, 0, 720, 90); s.timeAt = now; s.speed = 0; } // keep the story's sky
+          s.story = null; s.plan = null; s.view = null; this.view = null; s.spot = null; s.hold = false; s.note = ''; s.quiz = null; s.close = null;
+          s.phase = 'free'; this.setTimer(s, this.clip(m.min, 0.25, 30, 3) * 60000, '남은 시간', 'closing');
+        } else if (m.v === 'done') { if (s.timer && s.timer.src === 'closing') s.timer = null; s.quiz = null; s.close = { at: now }; }
+        else if (m.v === 'off') { s.close = null; if (s.timer && s.timer.src === 'closing') s.timer = null; }
+        break;
+      }
       case 'sky': { // which evening and place every phone shows outside the story (null = the event night)
         const d = typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : null;
         const lat = Number(m.lat), lon = Number(m.lon), tz = Number(m.tz);
@@ -254,6 +264,7 @@ export class Room {
     const tm = s.timer;
     if (tm && !tm.paused && tm.end <= Date.now() + 100) {
       if (tm.src === 'plan') this.planNext(s);
+      else if (tm.src === 'closing') { s.timer = null; s.close = { at: Date.now() }; }
       else { s.timer = null; s.note = '시간이 끝났어요'; }
       await this.save(s); await this.arm(s); this.broadcast(s);
     }

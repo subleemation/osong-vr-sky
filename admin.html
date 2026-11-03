@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0c0d11">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/admin.css?v=3">
+<link rel="stylesheet" href="css/admin.css?v=4">
 </head>
 <body>
 <div id="login">
@@ -56,6 +56,10 @@
         </div>
       </div>
       <p id="hFollowNote" hidden></p>
+      <div class="cctv-block">
+        <div class="hplab cctv-head"><span>참여자 화면 <b id="cctvCount">0대</b> <small>실제 폰 화면, 1.5초마다</small></span><button class="hb" id="cctvBig" type="button">크게 보기</button></div>
+        <div id="cctvHome"><div class="cctv-grid" id="cctvGrid"><p class="cctv-empty" id="cctvEmpty">휴대폰이 들어오면 여기에 화면이 떠요.</p></div></div>
+      </div>
     </div>
 
     <aside class="side">
@@ -88,6 +92,16 @@
         <ol class="slist" id="sList"></ol>
       </section>
 
+      <section aria-labelledby="clH">
+        <div class="bar spread"><h2 id="clH">마무리 타이머</h2><span class="clstate" id="clState"></span></div>
+        <div class="bar">
+          <label class="clmin"><input type="number" id="clMin" min="1" max="30" step="1" value="3" aria-label="타이머 분"> 분</label>
+          <button class="hb go2" id="clStart" type="button">타이머 시작</button>
+          <button class="hb" id="clNow" type="button">지금 끝내기</button>
+          <button class="hb" id="clOff" type="button">안내 지우기</button>
+        </div>
+        <p class="istate" id="clText"></p>
+      </section>
       <section aria-labelledby="cnH">
         <h2 id="cnH">폰 연결</h2>
         <div class="qr">
@@ -255,13 +269,18 @@
   </div>
 </div>
 
+<div id="cctvWall" hidden role="dialog" aria-label="참여자 화면 모아 보기">
+  <div class="cctv-wall-head"><b>참여자 화면</b><span id="cctvWallCount"></span><button class="hb" id="cctvClose" type="button">닫기 (Esc)</button></div>
+  <div class="cctv-wall-body" id="cctvWallBody"></div>
+</div>
 <script src="vendor/qrcode.js?v=3"></script>
 <script src="js/sky-data.js?v=3"></script>
 <script src="vendor/astronomy.browser.min.js?v=2.1.19"></script>
 <script src="js/sky-core.js?v=3"></script>
-<script src="story.js?v=3"></script>
+<script src="story.js?v=4"></script>
 <script src="quiz.js?v=1"></script>
-<script src="js/admin.js?v=3"></script>
+<script src="js/admin.js?v=4"></script>
+<script src="js/cctv.js?v=1"></script>
 
 </body>
 </html>

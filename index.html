@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0c0d11">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/app.css?v=3">
+<link rel="stylesheet" href="css/app.css?v=4">
 
 </head>
 <body>
@@ -20,18 +20,19 @@
   <div class="wrap">
     <header>
       <h1>별이 빛나는 밤에</h1>
-      <p class="sub">비가 와도 괜찮아요. 오늘 밤 오송 하늘에 뜰 별과 별자리, 토성을 VR로 먼저 만나요.</p>
+      <p class="sub solo-only">오송 하늘에 뜨는 별과 별자리, 행성, 달을 VR로 둘러봐요. 날짜와 장소를 골라 오늘 밤도, 지난 밤도 볼 수 있어요.</p>
+      <p class="sub guest-only">진행자와 함께 보는 화면이에요. <b>VR로 보기</b>만 누르면, 그다음은 진행자가 안내하는 대로 따라가요.</p>
     </header>
 
     <div class="go">
       <button class="btn primary" id="goVR" type="button">VR로 보기<small>헤드셋에 폰 넣기</small></button>
-      <button class="btn" id="goScreen" type="button">화면으로 보기<small>손으로 끌어서 둘러보기</small></button>
+      <button class="btn solo-only" id="goScreen" type="button">화면으로 보기<small>손으로 끌어서 둘러보기</small></button>
     </div>
     <p class="notice" id="sensorNote" hidden></p>
 
     <p class="netchip" id="netChip" hidden></p>
 
-    <section class="card" aria-labelledby="hTime">
+    <section class="card solo-only" aria-labelledby="hTime">
       <h2 id="hTime">언제 하늘을 볼까요?</h2>
       <div class="row">
         <div class="lab"><span>날짜와 장소</span><span class="where" id="skyWhere">2026. 11. 1 · 오송호수공원</span></div>
@@ -63,9 +64,9 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="hShow">
+    <section class="card solo-only" aria-labelledby="hShow">
       <h2 id="hShow">무엇을 보여줄까요?</h2>
-      <div class="row">
+      <div class="row" hidden>
         <span class="lab"><span>하늘 밝기 (별 개수)</span></span>
         <div class="chips" role="group" aria-label="하늘 밝기">
           <button class="chip" type="button" data-lim="3.6" aria-pressed="false">도시</button>
@@ -84,7 +85,7 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="hVR">
+    <section class="card" aria-labelledby="hVR" hidden>
       <h2 id="hVR">VR 맞추기</h2>
       <div class="row">
         <label for="ipd"><span>두 화면 사이 간격</span><b id="ipdVal">기본</b></label>
@@ -107,20 +108,42 @@
       <p class="sub" style="font-size:14px">이 설정은 VR 안에서도 바꿀 수 있어요. 헤드셋을 쓰고 아래를 내려다보세요. 별이 둘로 갈라져 보이면 간격을 조금씩 옮겨 보세요. 헤드셋의 다이얼(렌즈 거리, 미간)도 함께 맞추면 좋아요.</p>
     </section>
 
-    <section class="card" aria-labelledby="hHow">
-      <h2 id="hHow">이렇게 써요</h2>
+    <section class="card guest-only" aria-labelledby="hHowG">
+      <h2 id="hHowG">이렇게 보세요</h2>
+      <ol class="steps">
+        <li>폰 화면 밝기를 올리고 <b>VR로 보기</b>를 눌러요.</li>
+        <li>폰을 <b>가로로</b> 돌려 헤드셋에 넣어요.</li>
+        <li><b>앉아서</b> 고개를 천천히 돌려요. 진행자가 시작하면 장면이 저절로 이어져요.</li>
+        <li>별이 둘로 보이면 <b>고개를 숙여 아래를 보세요.</b> 설정판의 버튼을 1초쯤 바라보면 눌려요.</li>
+      </ol>
+      <p class="sub" style="font-size:14px">어지러우면 바로 벗고 쉬어요. 어린이는 3분 정도만 보는 게 좋아요.</p>
+    </section>
+    <section class="card solo-only" aria-labelledby="hHow">
+      <h2 id="hHow">사용 설명서</h2>
+      <h3 class="mh">VR로 보기</h3>
       <ol class="steps">
         <li>폰 화면이 꺼지지 않게 밝기를 올리고, <b>VR로 보기</b>를 눌러요.</li>
         <li>폰을 <b>가로로</b> 돌려 헤드셋에 넣어요.</li>
         <li><b>앉아서</b> 고개를 천천히 돌리며 하늘을 둘러봐요.</li>
-        <li>가운데 동그라미로 별자리를 바라보면 설명이 나와요.</li>
-        <li>별이 둘로 보이거나 방향이 어긋나면 <b>고개를 숙여 아래를 보세요.</b> 설정판이 나오고, 버튼을 1초쯤 바라보면 눌려요. 폰을 빼지 않아도 돼요.</li>
+        <li>가운데 동그라미로 별자리를 바라보면 그림과 설명이 나와요.</li>
+        <li>별이 둘로 보이거나 방향이 어긋나면 <b>고개를 숙여 아래를 보세요.</b> 설정판에서 두 화면 간격, 렌즈 보정, 방향을 맞출 수 있고, 버튼은 1초쯤 바라보면 눌려요.</li>
         <li>메뉴로 돌아오려면 설정판의 <b>메뉴로</b> 버튼을 바라보거나, 화면을 <b>두 번 톡톡</b> 눌러요.</li>
+      </ol>
+      <h3 class="mh">화면으로 보기</h3>
+      <ol class="steps">
+        <li>손가락으로 <b>끌어서</b> 하늘을 둘러보고, <b>두 손가락</b>으로 확대해요.</li>
+        <li>가운데 동그라미에 별자리나 별을 두면 설명이 나와요.</li>
+      </ol>
+      <h3 class="mh">하늘 고르기</h3>
+      <ol class="steps">
+        <li><b>언제 하늘을 볼까요?</b>에서 날짜와 장소를 고르고, 저녁 6시부터 다음 날 아침 6시까지 시각을 움직여 봐요.</li>
+        <li><b>시간 흐르기</b>를 빠르게 하면 별이 북극성 둘레를 도는 모습이 보여요.</li>
+        <li><b>무엇을 보여줄까요?</b>에서 별자리 그림·선·이름, 별 이름, 은하수, 동서남북, 별의 궤적을 켜고 끌 수 있어요.</li>
       </ol>
       <p class="sub" style="font-size:14px">어지러우면 바로 벗고 쉬어요. 어린이는 3분 정도만 보는 게 좋아요.</p>
     </section>
 
-    <p class="foot">별자리 그림 Johan Meuris / Stellarium (Free Art License) · 은하수 NASA/GSFC SVS Deep Star Maps 2020 · 토성 사진 NASA, ESA and the Hubble Heritage Team (STScI/AURA), CC BY 4.0 · 위치 계산 astronomy-engine (MIT)</p>
+    <p class="foot">별자리 그림 Johan Meuris / Stellarium (Free Art License) · 은하수 NASA/GSFC SVS Deep Star Maps 2020 · 토성 사진 NASA, ESA and the Hubble Heritage Team (STScI/AURA), CC BY 4.0 · 안드로메다은하·좀생이별 사진 HG731GZ / Stellarium, CC BY 3.0 · 위치 계산 astronomy-engine (MIT)</p>
   </div>
 </div>
 
@@ -156,12 +179,13 @@
 <div id="rotate" hidden>폰을 <br>가로로 돌려주세요</div>
 
 <script src="js/sky-data.js?v=3"></script>
-<script src="story.js?v=3"></script>
+<script src="story.js?v=4"></script>
+<script src="js/photos.js?v=1"></script>
 <script src="vendor/astronomy.browser.min.js?v=2.1.19"></script>
 <script src="js/sky-core.js?v=3"></script>
 <script src="js/skygl.js?v=3"></script>
 <script src="quiz.js?v=1"></script>
-<script src="js/app.js?v=3"></script>
+<script src="js/app.js?v=4"></script>
 
 <script src="art.js" async></script>
 </body>
