@@ -319,6 +319,7 @@
 
     // free observation: while the presenter's closing timer runs, keep the show's sky but let people look around,
     // gaze at constellations and read about them (the show stops steering the view)
+    if (guest) { var gsd = guest.state(); if (gsd && gsd.date && gsd.date !== window.SKY.date) setSkyDate(gsd.date); }   // follow the presenter's night
     var et = window.EndTimer ? EndTimer.state() : null, free = !!(ev && et && et.run), freeLim = null;
     if (free !== freeOn) {
       freeOn = free; freeAt = now; resetGaze();
@@ -330,7 +331,7 @@
     else if (ev) { st.minutes = ev.minutes; syncTime(); }
     else if (st.speed > 0 && st.mode !== 'menu') {
       st.minutes += dt * st.speed / 60;
-      if (st.minutes > 210) st.minutes = 30;
+      if (st.minutes > 720) st.minutes = 0;
       syncTime();
     }
 
@@ -395,7 +396,7 @@
       o.highlight = hcons; o.figures = figs; o.dwell = dwellRing();
       if (st.mode === 'vr') {
         var fa2 = altAz(st.cam.f);
-        o.top = clockText(st.minutes) + '  ' + DIRS[Math.round(fa2.az / 45) % 8] + '  고도 ' + Math.round(fa2.alt) + '°';
+        o.top = dateShort() + ' ' + clockText(st.minutes) + '  ' + DIRS[Math.round(fa2.az / 45) % 8] + '  고도 ' + Math.round(fa2.alt) + '°';
         if (sel && !PANEL.open) o.card = { name: sel.name, kind: sel.kind, text: sel.text, t: gaze.t };
         if (!PANEL.open && freeOn && now - freeAt < 10000) o.hint = '별자리를 2초쯤 바라보면 그림과 설명이 나와요';
         else if (!PANEL.open && now - st.vrT < 12000) o.hint = '고개를 숙여 발밑을 보면 설정이 나와요';
@@ -411,7 +412,7 @@
     if (st.mode === 'screen') {
       updateCard(ev ? null : sel);
       updateCaption(ev, a);
-      $('clockHud').innerHTML = clockText(st.minutes) + '<span>' + DIRS[Math.round(altAz(st.cam.f).az / 45) % 8] + ' · 고도 ' + Math.round(altAz(st.cam.f).alt) + '°</span>';
+      $('clockHud').innerHTML = '<span class="date">' + dateShort() + '</span>' + clockText(st.minutes) + '<span>' + DIRS[Math.round(altAz(st.cam.f).az / 45) % 8] + ' · 고도 ' + Math.round(altAz(st.cam.f).alt) + '°</span>';
     }
     if (st.mode === 'menu' && fr2) $('skyState').textContent = sunState(fr2.sunAlt);
     requestAnimationFrame(loop);
@@ -454,6 +455,33 @@
     if (Math.abs(+$('time').value - st.minutes) >= 5) $('time').value = Math.round(st.minutes / 5) * 5;
   }
   $('time').addEventListener('input', function () { st.minutes = +this.value; syncTime(); });
+
+  // ---------- which night: the date of the sky (js/skytime.js recomputes the Sun, Moon and planets) ----------
+  function dateShort() { return window.SkyTime ? SkyTime.shortLabel() : '11/1'; }
+  function dateUi() {
+    var d = window.SKY.date, n = window.SkyTime ? SkyTime.now() : null;
+    $('metaDate').textContent = window.SkyTime ? SkyTime.label(d) : '2026.11.01 일';
+    if ($('skyDate').value !== d) $('skyDate').value = d;
+    $('dateNote').textContent = n && n.date === d ? '오늘 밤' : '';
+  }
+  function setSkyDate(d) { if (window.SkyTime && SkyTime.set(d)) { dateUi(); return true; } return false; }
+  function goNow() {
+    var n = SkyTime.now(); setSkyDate(n.date);
+    st.minutes = n.minutes >= 0 && n.minutes <= 720 ? n.minutes : 150;   // daytime: start at 20:30 of tonight
+    syncTime();
+  }
+  if (window.SkyTime && SkyTime.ok) {
+    $('skyDate').min = SkyTime.MIN; $('skyDate').max = SkyTime.MAX;
+    $('skyDate').addEventListener('change', function () {
+      if (!setSkyDate(this.value)) this.value = window.SKY.date;
+    });
+    $('nowBtn').addEventListener('click', goNow);
+    if (!room) goNow();   // on its own: tonight; from the presenter's QR: the presenter's night
+  } else {
+    $('skyDate').disabled = true; $('nowBtn').disabled = true;
+    $('dateNote').textContent = '이 기기에서는 2026년 11월 1일만 볼 수 있어요';
+  }
+  dateUi();
   function seg(attr, apply) {
     var btns = document.querySelectorAll('[data-' + attr + ']');
     btns.forEach(function (b) {

@@ -219,7 +219,7 @@ var SkyEngine = function (canvas, glCanvas) {
     var rows = [cam.r, cam.u, cam.f], T = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
     for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++)
       T[a][b] = rows[a][0] * M[0][b] + rows[a][1] * M[1][b] + rows[a][2] * M[2][b];
-    var sun = C.apply(M, C.radec2vec.apply(null, C.bodyRaDec(S, 'Sun', minutes)));
+    var sunV = C.radec2vec.apply(null, C.bodyRaDec(S, 'Sun', minutes)), sun = C.apply(M, sunV);
     var sunAlt = Math.asin(sun[2]) / D2R;
     var twiLim = sunAlt >= -6 ? 1.0 : sunAlt <= -18 ? 6.5 : 1.0 + (-6 - sunAlt) / 12 * 5.5;
     var bodies = [];
@@ -228,7 +228,7 @@ var SkyEngine = function (canvas, glCanvas) {
       var e = C.apply(M, v);
       if (e[2] > 0) bodies.push({ key: b, v: v, enu: e, mag: S.planets[b].mag });
     });
-    frame = { M: M, T: T, sunEnu: sun, sunAlt: sunAlt, twiLim: twiLim, dark: clamp((-sunAlt - 10) / 8, 0, 1), bodies: bodies };
+    frame = { M: M, T: T, sunV: sunV, sunEnu: sun, sunAlt: sunAlt, twiLim: twiLim, dark: clamp((-sunAlt - 10) / 8, 0, 1), bodies: bodies };
     return frame;
   }
   function toCam(v, out) {
@@ -480,15 +480,41 @@ var SkyEngine = function (canvas, glCanvas) {
 
   // planets look like steady stars to the eye: a point of light, no outline shapes
   var BODY_SPRITE = { Saturn: 3, Jupiter: 2, Mars: 5, Venus: 2, Mercury: 3, Moon: 2, Uranus: 0, Neptune: 0 };
+  var MP = [0, 0];
   function drawBody(view, b) {
     toCam(b.v, CV);
     if (!proj(view, CV[0], CV[1], CV[2], P)) return;
+    if (b.key === 'Moon') { drawMoon(view, b); return; }
     var sizeK = clamp(Math.sqrt(view.f / 400), 0.8, 2) * (view.vr ? 1.25 : 1);
     var faint = b.mag > 5;
     var d = faint ? 4.2 * sizeK : (3.0 + 2.1 * Math.max(0, 5.4 - b.mag)) * sizeK;
     ctx.globalAlpha = faint ? 0.6 : 1;
     ctx.drawImage(sprites[BODY_SPRITE[b.key] || 2], P[0] - d / 2, P[1] - d / 2, d, d);
     ctx.globalAlpha = 1;
+  }
+
+  // the Moon with its phase: lit side faces the Sun, lit fraction from the Sun-Moon angle (geocentric is close enough)
+  function drawMoon(view, b) {
+    var m = b.v, s = frame.sunV, c = m[0] * s[0] + m[1] * s[1] + m[2] * s[2];
+    var k = (1 - c) / 2;                                   // lit fraction 0 (new) .. 1 (full)
+    // a point a little toward the Sun, to find which way the lit side points on screen
+    var w = [m[0] + 0.02 * (s[0] - c * m[0]), m[1] + 0.02 * (s[1] - c * m[1]), m[2] + 0.02 * (s[2] - c * m[2])];
+    var x = P[0], y = P[1], th = 0;
+    toCam(w, CV);
+    if (proj(view, CV[0], CV[1], CV[2], MP)) th = Math.atan2(MP[1] - y, MP[0] - x);
+    var r = clamp(view.f * 0.0045, 4.5, 11) * (view.vr ? 1.15 : 1);   // about 0.5 deg, kept visible on small screens
+    ctx.save(); ctx.translate(x, y); ctx.rotate(th);
+    var glow = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 3.2);
+    glow.addColorStop(0, 'rgba(240,236,220,' + (0.10 + 0.22 * k).toFixed(3) + ')'); glow.addColorStop(1, 'rgba(240,236,220,0)');
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, r * 3.2, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillStyle = 'rgba(60,62,70,0.55)'; ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill();   // earthshine side
+    if (k > 0.01) {
+      ctx.fillStyle = '#efe9d8'; ctx.beginPath();
+      ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);                                   // sunward half
+      ctx.ellipse(0, 0, Math.max(0.01, r * Math.abs(1 - 2 * k)), r, 0, Math.PI / 2, -Math.PI / 2, k < 0.5);   // terminator
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   function ground(view) {

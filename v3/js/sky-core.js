@@ -5,7 +5,7 @@ var SkyCore = (function () {
     var a = ra * D2R, d = dec * D2R, cd = Math.cos(d);
     return [cd * Math.cos(a), cd * Math.sin(a), Math.sin(d)];
   }
-  // J2000 equatorial -> local East/North/Up, for minutes since 18:00 KST on 2026-11-01
+  // J2000 equatorial -> local East/North/Up, for minutes since 18:00 KST on the sky date (S.date, see js/skytime.js)
   function eqjToEnu(S, minutes) {
     var r = S.rot; // astronomy-engine stores column-wise: v' = rot[0][i]x + rot[1][i]y + rot[2][i]z
     var P = [
@@ -41,7 +41,7 @@ var SkyCore = (function () {
   }
   function bodyRaDec(S, name, minutes) {
     var p = S.planets[name].p, n = p.length / 2;
-    var x = Math.max(0, Math.min(n - 1.0001, minutes / 10));
+    var x = Math.max(0, Math.min(n - 1.0001, (minutes - (S.pMin0 || 0)) / 10));   // samples every 10 min from S.pMin0 (js/skytime.js)
     var i = Math.floor(x), f = x - i;
     var ra0 = p[2 * i], ra1 = p[2 * i + 2], d0 = p[2 * i + 1], d1 = p[2 * i + 3];
     if (ra1 - ra0 > 180) ra1 -= 360;

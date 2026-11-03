@@ -87,11 +87,14 @@ var ShowSync = (function () {
 
   // presenter side: owns the show state
   function host(room, on) {
-    var cur = { show: null, status: 'idle', scene: 0, sceneStart: 0 };
+    var cur = { show: null, status: 'idle', scene: 0, sceneStart: 0 }, want = null;   // want: the night this console chose
     var link = connect('host', room, {
       status: on.status, count: on.count,
       // after a server restart the room is empty again: put our show state back
-      welcome: function (s) { if (s && (s.show || s.intro || s.timer)) { cur = s; on.state && on.state(cur); } else if (cur.show || cur.intro || cur.timer) push({}); },
+      welcome: function (s) {
+        if (s && (s.show || s.intro || s.timer || s.date)) { cur = s; on.state && on.state(cur); if (want && cur.date !== want) push({ date: want }); }
+        else if (cur.show || cur.intro || cur.timer || want) push(want ? { date: want } : {});
+      },
       state: function (s) { cur = s; on.state && on.state(cur); }
     });
     function push(patch) {
@@ -99,7 +102,7 @@ var ShowSync = (function () {
       for (var k in cur) next[k] = cur[k];
       for (var p in patch) next[p] = patch[p];
       cur = next; on.state && on.state(cur);
-      link.send({ show: cur.show, status: cur.status, scene: cur.scene, sceneStart: cur.sceneStart, intro: cur.intro || null, timer: cur.timer || null });
+      link.send({ show: cur.show, status: cur.status, scene: cur.scene, sceneStart: cur.sceneStart, intro: cur.intro || null, timer: cur.timer || null, date: cur.date || null });
     }
     return {
       state: function () { return cur; },
@@ -120,6 +123,8 @@ var ShowSync = (function () {
         else if (v === 'done') push({ timer: { st: 'done', at: t } });
         else push({ timer: null });
       },
+      // the night everyone sees ('YYYY-MM-DD', sky clock = minutes after 18:00 KST of that date)
+      date: function (d) { want = d; if (cur.date !== d) push({ date: d }); },
       close: link.close
     };
   }

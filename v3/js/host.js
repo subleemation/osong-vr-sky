@@ -60,7 +60,34 @@
       count: function (n) { $('count').textContent = n; },
       state: function (s) { cur = s; if (s.show && $('showSel').value !== s.show) { $('showSel').value = s.show; buildSteps(); } }
     });
+    if (skyDate) hub.date(skyDate);   // phones follow this console's night
   }
+  // ---------- the night everyone sees (js/skytime.js) ----------
+  var skyDate = null;
+  function dateRender() {
+    var n = window.SkyTime ? SkyTime.now() : null;
+    $('dateState').textContent = window.SkyTime ? SkyTime.label(window.SKY.date) + (n && n.date === window.SKY.date ? ' · 오늘 밤' : '') : '';
+    if ($('hostDate').value !== window.SKY.date) $('hostDate').value = window.SKY.date;
+    $('metaDate').textContent = window.SKY.date.replace(/-/g, '.');
+  }
+  function chooseDate(d, quiet) {
+    if (!window.SkyTime || !SkyTime.set(d)) { dateRender(); return false; }
+    skyDate = d; try { localStorage.setItem('osongvr-skydate', d); } catch (e) {}
+    if (hub) hub.date(d);
+    dateRender(); return true;
+  }
+  if (window.SkyTime && SkyTime.ok) {
+    $('hostDate').min = SkyTime.MIN; $('hostDate').max = SkyTime.MAX;
+    var saved = null; try { saved = localStorage.getItem('osongvr-skydate'); } catch (e) {}
+    chooseDate(saved && SkyTime.valid(saved) ? saved : SkyTime.now().date);
+    $('hostDate').addEventListener('change', function () { chooseDate(this.value); });
+    $('hostToday').addEventListener('click', function () { chooseDate(SkyTime.now().date); });
+  } else {
+    $('hostDate').disabled = true; $('hostToday').disabled = true;
+    $('dateText').textContent = '날짜 계산 라이브러리를 불러오지 못해서 2026년 11월 1일 하늘만 보여요.';
+  }
+  dateRender();
+
   $('newRoom').addEventListener('click', function () {
     if (cur.status === 'live' && !confirm('쇼가 진행 중이에요. 방 코드를 바꾸면 접속한 사람들이 모두 끊겨요. 바꿀까요?')) return;
     room = ShowSync.makeRoom();
@@ -204,7 +231,7 @@
       o.cam = camFrom(idleYaw, 40);
     }
     eng.render(o);
-    $('stageClock').textContent = clockText(o.minutes);
+    $('stageClock').textContent = (window.SkyTime ? SkyTime.shortLabel() + ' ' : '') + clockText(o.minutes);
 
     var cap = $('caption');
     if (ev && ev.caption) {
