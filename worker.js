@@ -22,7 +22,7 @@ function safeEq(a, b) {
   return d === 0;
 }
 
-const FRESH = () => ({ phase: 'idle', time: 90, timeAt: Date.now(), speed: 0, spot: null, note: '', hold: false, timer: null, plan: null, close: null });
+const FRESH = () => ({ phase: 'idle', time: 90, timeAt: Date.now(), speed: 0, spot: null, note: '', hold: false, timer: null, plan: null, close: null, pin: null });
 
 export class Room {
   constructor(ctx, env) {
@@ -46,12 +46,13 @@ export class Room {
       plan: s.plan ? { order: s.plan.order, i: s.plan.i, n: s.plan.steps.length, label: s.plan.steps[s.plan.i].l } : null,
       view: this.view || s.view || null,
       art: typeof s.art === 'boolean' ? s.art : null,
-      story: s.story ? { show: s.story.show, i: s.story.i, el: Date.now() - s.story.at } : null,
+      story: s.story ? { show: s.story.show, i: s.story.i, el: Date.now() - s.story.at, sky: !!s.story.sky } : null, // sky: on the presenter's night instead of the event night
       sky: s.sky || null,
       disp: s.disp || null,
       quiz: s.quiz || null,
       intro: s.intro ? { st: s.intro.st, n: s.intro.n, len: s.intro.len, el: Date.now() - s.intro.at, pel: Date.now() - (s.intro.pat || s.intro.at) } : null,
-      close: s.close ? { el: Date.now() - s.close.at } : null,   // closing timer ran out: phones go black with "take the headset off"
+      close: s.close ? { el: Date.now() - s.close.at } : null,
+      pin: s.pin || null, // closing free look stays on the story's night: 'event' or 'host'   // closing timer ran out: phones go black with "take the headset off"
     };
     return JSON.stringify(out);
   }
@@ -189,7 +190,7 @@ export class Room {
         s.plan = { order: m.order === 'FG' ? 'FG' : 'GF', steps, i: 0 }; this.planEnter(s, 0); break;
       }
       case 'next': this.planNext(s); break;
-      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; s.close = null; break;
+      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; s.close = null; s.pin = null; break;
       case 'intro': {
         // opening film: wait (everyone black) → play → (skip) ; phones run the timeline themselves from 'at'
         const cur = s.intro, n = ((cur && cur.n) || 0) + 1;
@@ -199,7 +200,7 @@ export class Room {
         } else if (m.v === 'skip') {
           if (cur && cur.st === 'play' && now - cur.at < 70000) s.intro = { st: 'skip', n: cur.n, at: now, pat: cur.pat, len: cur.len };
         } else if (m.v === 'wait') {
-          s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.close = null;
+          s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.close = null; s.pin = null;
           s.intro = { st: 'wait', n, at: now, pat: now };
         } else if (m.v === 'off') s.intro = null;
         break;
@@ -234,14 +235,15 @@ export class Room {
       case 'note': s.note = String(m.v || '').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'hold': s.hold = !!m.v; if (s.hold) s.note = String(m.note || '헤드셋을 벗고 앞을 봐 주세요').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'art': s.art = typeof m.v === 'boolean' ? m.v : null; break;
-      case 'story': s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now } : null; if (s.story) { s.hold = false; s.close = null; } break;
+      case 'story': s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now, sky: !!m.sky } : null; if (s.story) { s.hold = false; s.close = null; s.pin = null; } break;
       case 'closing': { // the last free look: a countdown on every phone, then black with "take the headset off"
         if (m.v === 'run') {
           if (Number.isFinite(Number(m.time))) { s.time = this.clip(m.time, 0, 720, 90); s.timeAt = now; s.speed = 0; } // keep the story's sky
+          if (s.story) s.pin = s.story.sky ? 'host' : 'event';
           s.story = null; s.plan = null; s.view = null; this.view = null; s.spot = null; s.hold = false; s.note = ''; s.quiz = null; s.close = null;
           s.phase = 'free'; this.setTimer(s, this.clip(m.min, 0.25, 30, 3) * 60000, '남은 시간', 'closing');
         } else if (m.v === 'done') { if (s.timer && s.timer.src === 'closing') s.timer = null; s.quiz = null; s.close = { at: now }; }
-        else if (m.v === 'off') { s.close = null; if (s.timer && s.timer.src === 'closing') s.timer = null; }
+        else if (m.v === 'off') { s.close = null; s.pin = null; if (s.timer && s.timer.src === 'closing') s.timer = null; }
         break;
       }
       case 'sky': { // which evening and place every phone shows outside the story (null = the event night)

@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0c0d11">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/admin.css?v=4">
+<link rel="stylesheet" href="css/admin.css?v=5">
 </head>
 <body>
 <div id="login">
@@ -78,6 +78,11 @@
       <section aria-labelledby="stH">
         <div class="bar spread"><h2 id="stH">이야기</h2></div>
         <select id="sShow" aria-label="이야기 고르기"></select>
+        <div class="bar sky-pick"><span class="hn">이야기 하늘</span>
+          <button class="hb" id="sSkyEvent" type="button" aria-pressed="true">관측회 날 (11/1)</button>
+          <button class="hb" id="sSkyHost" type="button" aria-pressed="false">고른 날짜</button>
+        </div>
+        <p class="swarn" id="sWarn"></p>
         <div class="bar">
           <button class="hb" id="sPrev" type="button">이전</button>
           <button class="hb go2 wide" id="sGo" type="button">시작</button>
@@ -163,7 +168,7 @@
             <button class="hb" type="button" id="hSkyToday">오늘 밤</button>
             <input type="date" id="hDate" value="2026-11-01" min="1900-01-01" max="2100-12-31" aria-label="날짜">
           </div>
-          <p class="hnote" id="hSkyNote">이야기는 언제나 관측회 날(2026년 11월 1일) 오송 하늘로 진행돼요.</p>
+          <p class="hnote" id="hSkyNote">이야기를 이 날짜로 볼지는 ‘이야기’ 칸의 ‘이야기 하늘’에서 골라요. 기본은 관측회 날(2026년 11월 1일)이에요.</p>
           <div class="hclock" id="hClock">오후 7:30</div>
           <input type="range" id="hTime" min="0" max="720" step="5" value="90" aria-label="하늘 시각 (오후 6시 ~ 오전 6시)">
           <div class="bar" id="hStep">
@@ -279,7 +284,7 @@
 <script src="js/sky-core.js?v=3"></script>
 <script src="story.js?v=4"></script>
 <script src="quiz.js?v=1"></script>
-<script src="js/admin.js?v=4"></script>
+<script src="js/admin.js?v=5"></script>
 <script src="js/cctv.js?v=1"></script>
 
 </body>
