@@ -9,10 +9,10 @@
 <meta name="theme-color" content="#0c0d11">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/admin.css?v=3">
+<link rel="stylesheet" href="css/admin.css?v=4">
 </head>
 <body>
-<div id="login">
+<div id="login" hidden>
   <form class="lbox" id="lform">
     <h1>별이 빛나는 밤에</h1>
     <input type="password" id="lkey" placeholder="관리자 비밀번호" autocomplete="current-password" aria-label="관리자 비밀번호">
@@ -167,6 +167,7 @@
             <button class="hb" type="button" data-hspeed="60" aria-pressed="false" title="1초에 1분씩">60배 ▶</button>
             <button class="hb" type="button" data-hspeed="600" aria-pressed="false" title="1초에 10분씩">600배 ▶▶</button>
           </div>
+          <div class="bar"><button class="hb go2" type="button" id="hDiurnal">일주운동 보기</button><span class="hnote">별의 궤적을 켜고 600배로 흘려요. 멈춤을 누르면 그린 궤적이 남아요.</span></div>
           <p class="hnote">시각은 설명·자유 관찰 시간에 모든 폰에 적용돼요. 이야기 중에는 장면의 시각을 따라가요.</p>
         </div>
       </details>
@@ -255,13 +256,13 @@
   </div>
 </div>
 
-<script src="vendor/qrcode.js?v=3"></script>
-<script src="js/sky-data.js?v=3"></script>
+<script src="vendor/qrcode.js?v=4"></script>
+<script src="js/sky-data.js?v=4"></script>
 <script src="vendor/astronomy.browser.min.js?v=2.1.19"></script>
-<script src="js/sky-core.js?v=3"></script>
-<script src="story.js?v=3"></script>
+<script src="js/sky-core.js?v=4"></script>
+<script src="story.js?v=4"></script>
 <script src="quiz.js?v=1"></script>
-<script src="js/admin.js?v=3"></script>
+<script src="js/admin.js?v=4"></script>
 
 </body>
 </html>

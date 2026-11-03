@@ -63,8 +63,9 @@
       var m; try { m = JSON.parse(e.data); } catch (x) { return; }
       if (m.k === 'authok') { authed = true; $('login').hidden = true; try { sessionStorage.setItem('osong-key', key); } catch (x) {} }
       else if (m.k === 'authfail') {
+        // only a server that still runs the old worker.js asks for a password
         authed = false; $('login').hidden = false;
-        $('lerr').textContent = m.configured ? '비밀번호가 맞지 않아요' : '서버에 관리자 비밀번호가 아직 설정되지 않았어요';
+        $('lerr').textContent = key ? '비밀번호가 맞지 않아요' : '서버가 아직 예전 버전이라 비밀번호가 필요해요 (worker.js를 다시 배포하면 없어져요)';
         try { sessionStorage.removeItem('osong-key'); } catch (x) {}
         my.onclose = null; my.close();
       }
@@ -125,6 +126,10 @@
   setInterval(tick, 500);
 
   // ---- time jumps ----
+  $('hDiurnal').addEventListener('click', function () {
+    if (ST && (ST.phase === 'idle' || ST.phase === 'end')) cmd('phase', { v: 'free' }); // the shared clock only runs in a phase
+    cmd('show', { key: 'trails', v: true }); cmd('speed', { v: 600 });
+  });
   document.querySelectorAll('[data-hstep]').forEach(function (b) { b.addEventListener('click', function () { cmd('step', { v: +b.getAttribute('data-hstep') }); }); });
 
   // ---- what every phone draws ----

@@ -94,13 +94,11 @@
   }
   var STAR_COLORS = ['#b9cbff', '#dbe4ff', '#fff6ea', '#fff0c8', '#ffd9a0', '#ffbd84'];
   var sprites = STAR_COLORS.map(function (col) {
-    // a crisp solid core with a short halo, drawn large so it stays sharp on 3x phone screens
-    var c = document.createElement('canvas'); c.width = c.height = 128;
+    var c = document.createElement('canvas'); c.width = c.height = 64;
     var g = c.getContext('2d');
-    var gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.16, '#ffffff'); gr.addColorStop(0.26, col);
-    gr.addColorStop(0.36, hexA(col, 0.4)); gr.addColorStop(0.55, hexA(col, 0.08)); gr.addColorStop(1, hexA(col, 0));
-    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    var gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.22, col); gr.addColorStop(0.5, hexA(col, 0.4)); gr.addColorStop(1, hexA(col, 0));
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
     return c;
   });
   function hexA(hex, a) {
@@ -356,6 +354,7 @@
     // constellation lines
     var sel = view.sel, selCons = (sel && sel.cons) || guideCons() || (STORY.ev && STORY.ev.highlight) || null;
     LBL = STORY.ev ? STORY.ev.labelAlpha : 1;
+    drawPhotos(view);
     drawArt(view, selCons);
     if (opt('lines')) {
       c.lineWidth = Math.max(1, view.f / 420);
@@ -373,9 +372,9 @@
     }
     drawStoryLines(view);
     drawStoryPointer(view);
-    if (opt('trails')) drawTrails(view);
+    if (opt('trails') && !STORY.ev) drawTrails(view);
     // stars
-    var lim = frame.lim, sizeK = Math.max(0.85, Math.min(2, Math.sqrt(view.f / 380))) * (view.vr ? 1.25 : 1);
+    var lim = frame.lim, sizeK = Math.max(0.85, Math.min(2, Math.sqrt(view.f / 380)));
     var M = frame.M, T = frame.T;
     for (var i = 0; i < NS; i++) {
       var m = SM[i];
@@ -392,7 +391,7 @@
       var mEff = m + 0.25 * (1 / Math.max(up, 0.06) - 1); // thicker air near the ground
       var vis = lim - mEff;
       if (vis < -0.3) continue;
-      var alpha = Math.max(0.4, Math.min(1, 0.55 + vis / 1.4));
+      var alpha = Math.max(0.25, Math.min(1, 0.45 + vis / 1.4));
       var d = Math.max(3, (lim + 2.6 - mEff) * 2.5) * sizeK;
       if (m < 1.5) d *= 1.25;
       c.globalAlpha = alpha;
@@ -508,14 +507,52 @@
     c.restore();
   }
 
-  // star trails: where the bright stars were over the past two hours (the Earth turning under the sky)
-  var TRAIL = { key: '', Ms: null };
+  // real photos of a few deep-sky objects (js/photos.js, from vr_planetarium v3), pinned to the sky by three corners;
+  // faint at a normal field of view, full strength when zoomed in
+  var PHOTOS = (window.SKY_PHOTOS || []).map(function (p) {
+    var it = { id: p.id, img: new Image(), ok: false, base: p.base || 0.5,
+      tl: C.radec2vec(p.tl[0], p.tl[1]), tr: C.radec2vec(p.tr[0], p.tr[1]), bl: C.radec2vec(p.bl[0], p.bl[1]) };
+    it.cen = C.radec2vec((p.tr[0] + p.bl[0]) / 2, (p.tr[1] + p.bl[1]) / 2);
+    it.img.onload = function () { it.ok = true; }; it.img.src = p.src;
+    return it;
+  });
+  var PA = [0, 0], PB = [0, 0], PC = [0, 0], PM = [0, 0], PV = [0, 0, 0];
+  function drawPhotos(view) {
+    if (!PHOTOS.length || frame.dark < 0.05) return;
+    var fovNow = view.vr ? st.fov : (st.mode === 'menu' ? 80 : st.zoomFov), zoom = Math.max(0, Math.min(1, (80 - fovNow) / 45));
+    for (var i = 0; i < PHOTOS.length; i++) {
+      var p = PHOTOS[i]; if (!p.ok || altOf(p.cen) < 0.02) continue;
+      toCam(p.cen, PV); if (PV[2] < 0.2 || !proj(view, PV[0], PV[1], PV[2], PM)) continue;
+      toCam(p.tl, PV); if (!proj(view, PV[0], PV[1], PV[2], PA)) continue;
+      toCam(p.tr, PV); if (!proj(view, PV[0], PV[1], PV[2], PB)) continue;
+      toCam(p.bl, PV); if (!proj(view, PV[0], PV[1], PV[2], PC)) continue;
+      var w = p.img.width, h = p.img.height;
+      ctx.save();
+      ctx.globalAlpha = frame.dark * (p.base + (1 - p.base) * zoom);
+      ctx.transform((PB[0] - PA[0]) / w, (PB[1] - PA[1]) / w, (PC[0] - PA[0]) / h, (PC[1] - PA[1]) / h, PA[0], PA[1]);
+      ctx.drawImage(p.img, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  // star trails: the paths the bright stars have drawn since the trails were switched on. They grow only as sky
+  // time passes (run the clock fast to watch the diurnal motion); a jump in time or a new night starts them afresh.
+  var TRAIL = { key: '', Ms: null, lo: null, hi: null, last: null, sky: '', at: 0 };
+  function trailTick(on) {
+    var m = st.minutes, now = performance.now(), dt = (now - (TRAIL.at || now)) / 1000; TRAIL.at = now;
+    if (!on) { TRAIL.lo = TRAIL.hi = TRAIL.last = null; return; }
+    var speed = syncActive() ? SYNC.speed : st.speed, flow = Math.abs(speed) * dt / 60; // minutes the clock may run in this frame
+    if (TRAIL.last == null || Math.abs(m - TRAIL.last) > 20 + flow * 1.5 || TRAIL.sky !== skyKey) { TRAIL.lo = TRAIL.hi = m; TRAIL.sky = skyKey; }
+    TRAIL.lo = Math.min(TRAIL.lo, m); TRAIL.hi = Math.max(TRAIL.hi, m); TRAIL.last = m;
+  }
   function drawTrails(view) {
-    var steps = 24, span = 120, cam = st.cam, c = ctx;
-    var key = skyKey + ':' + Math.round(st.minutes * 4);
+    var span = TRAIL.hi - TRAIL.lo, cam = st.cam, c = ctx;
+    if (!(span > 0.5)) return;
+    var steps = Math.max(2, Math.min(72, Math.ceil(span / 4)));
+    var key = TRAIL.sky + ':' + Math.round(TRAIL.lo * 4) + ':' + Math.round(TRAIL.hi * 4);
     if (TRAIL.key !== key) {
       TRAIL.key = key; TRAIL.Ms = [];
-      for (var k = 0; k <= steps; k++) TRAIL.Ms.push(C.eqjToEnu(S, st.minutes - span * (1 - k / steps)));
+      for (var k = 0; k <= steps; k++) TRAIL.Ms.push(C.eqjToEnu(S, TRAIL.lo + span * k / steps));
     }
     var Ms = TRAIL.Ms;
     c.save();
@@ -526,7 +563,7 @@
       for (var i = 0; i < NS; i++) {
         if (SB[i] !== col || SM[i] > 3.6) continue;
         var v = [SV[3 * i], SV[3 * i + 1], SV[3 * i + 2]], started = false;
-        for (var q = 0; q <= steps; q++) {
+        for (var q = 0; q < Ms.length; q++) {
           var e = C.apply(Ms[q], v);
           if (e[2] < 0) { started = false; continue; }
           CV[0] = e[0] * cam.r[0] + e[1] * cam.r[1] + e[2] * cam.r[2];
@@ -1277,6 +1314,23 @@
     c.fillStyle = 'rgba(14,15,20,0.94)'; roundRect(x - w / 2 - 8, y - fontPx * 0.78, w + 16, fontPx * 1.56, fontPx * 0.78); c.fill();
     c.fillStyle = color || '#e8cf8a'; c.fillText(txt, x, y);
   }
+  // a message centred in its rounded box: wrapped to at most three lines, centred on the glyphs' real height
+  function pillText(text, x, y, maxW, font, fontPx, bg, fg) {
+    var c = ctx;
+    c.save();
+    c.font = font; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    var lines = wrapLines(String(text), maxW - 24);
+    lines = lines.slice(0, 3);
+    var m = c.measureText('가Ag'), asc = m.actualBoundingBoxAscent || fontPx * 0.8, desc = m.actualBoundingBoxDescent || fontPx * 0.2;
+    var lh = (asc + desc) * 1.45, w = 0;
+    lines.forEach(function (l) { w = Math.max(w, Math.min(maxW - 24, c.measureText(l).width)); });
+    var h = lh * (lines.length - 1) + asc + desc + fontPx * 0.9;
+    if (bg) { c.fillStyle = bg; roundRect(x - w / 2 - 12, y - h / 2, w + 24, h, Math.min(h / 2, fontPx * 0.8)); c.fill(); }
+    c.fillStyle = fg;
+    var top = y - (lh * (lines.length - 1) + asc + desc) / 2;
+    for (var i = 0; i < lines.length; i++) c.fillText(lines[i], x, top + asc + i * lh, maxW - 24);
+    c.restore();
+  }
   function drawNetOverlay(view, fontPx) {
     if (!NET.room || !SYNC.has || st.mode === 'menu') return;
     var c = ctx, vr = view.vr, cx = view.cx, cy = view.cy;
@@ -1286,8 +1340,7 @@
       c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e8cf8a';
       c.font = Math.round(fontPx * 1.6) + 'px ' + LABEL_FONT;
       c.fillText('잠깐 쉬어요', vr ? cx : W / 2, (vr ? cy : H / 2) - fontPx * 1.2);
-      c.fillStyle = '#f1f2f5'; c.font = Math.round(fontPx * 1.05) + 'px ' + BODY_FONT;
-      c.fillText(SYNC.note || '헤드셋을 벗고 앞을 봐 주세요', vr ? cx : W / 2, (vr ? cy : H / 2) + fontPx * 0.8);
+      pillText(SYNC.note || '헤드셋을 벗고 앞을 봐 주세요', vr ? cx : W / 2, (vr ? cy : H / 2) + fontPx * 1.1, vr ? rad * 1.5 : W - 40, Math.round(fontPx * 1.05) + 'px ' + BODY_FONT, fontPx, null, '#f1f2f5');
       return;
     }
     var storyNow = !!STORY.ev;
@@ -1307,19 +1360,14 @@
     c.fillStyle = low ? '#ff9a6b' : '#e8cf8a'; c.fillText(txt, vr ? cx : W / 2, topY);
     }
     // host message
-    if (SYNC.note) {
-      c.font = Math.round(fontPx * 1.05) + 'px ' + BODY_FONT;
-      var ny = vr ? cy + rad * 0.44 : H - 70, nw = Math.min(c.measureText(SYNC.note).width, (vr ? rad * 1.5 : W - 40));
-      c.fillStyle = 'rgba(232,207,138,0.95)'; roundRect((vr ? cx : W / 2) - nw / 2 - 12, ny - fontPx * 0.8, nw + 24, fontPx * 1.6, fontPx * 0.8); c.fill();
-      c.fillStyle = '#2a1d00'; c.fillText(SYNC.note, vr ? cx : W / 2, ny, nw);
-    }
+    if (SYNC.note) pillText(SYNC.note, vr ? cx : W / 2, vr ? cy + rad * 0.44 : H - 70, vr ? rad * 1.5 : W - 40, Math.round(fontPx * 1.05) + 'px ' + BODY_FONT, fontPx, 'rgba(232,207,138,0.95)', '#2a1d00');
     // target cue
     var sp = SYNC.phase === 'guide' ? SYNC.spot : null, e, label, cam = st.cam;
     if (storyNow) {
       if (!vr) return;                                   // screen mode is turned for you
       e = STORY.ev.endDir; label = STORY.ev.scene.title || '여기를 봐요';
     } else if (followOn() && vr) {
-      // VR phones are never turned by force (it makes people dizzy); point at where the host is looking instead
+      // the sky turns this round to the front (vrTurned); the marker shows the exact spot, also when it is high up
       var vaz = SYNC.view.yaw * D2R, val = SYNC.view.pitch * D2R;
       e = [Math.sin(vaz) * Math.cos(val), Math.cos(vaz) * Math.cos(val), Math.sin(val)];
       label = '진행자가 보는 곳';
@@ -1643,8 +1691,9 @@
     if (followOn() && st.mode === 'screen') { st.yaw = SYNC.view.yaw; st.pitch = SYNC.view.pitch; st.zoomFov = SYNC.view.fov; }
     if (STORY.ev && st.mode === 'screen') { var sa = C.enuToAltAz(STORY.ev.dir); st.yaw = sa.az; st.pitch = Math.max(-10, Math.min(89, sa.alt)); st.zoomFov = Math.max(25, Math.min(125, STORY.ev.fov)); }
     var target;
-    if (NET.sim === 'vr' && st.mode === 'vr') target = cameraFromYawPitch();
-    else if ((st.mode === 'vr' || (st.mode === 'screen' && st.useSensor)) && rawCam) target = rawCam;
+    if (NET.sim === 'vr' && st.mode === 'vr') target = vrTurned(cameraFromYawPitch()); // the preview turns like a headset
+    else if (st.mode === 'vr' && rawCam) target = vrTurned(rawCam);
+    else if (st.mode === 'screen' && st.useSensor && rawCam) target = rawCam;
     else {
       if (st.mode === 'menu') st.yaw = (st.yaw + dt * 1.2) % 360;
       target = cameraFromYawPitch();
@@ -1653,6 +1702,7 @@
     updatePanel(dt);
     useSky(activeSky());
     computeFrame();
+    trailTick(opt('trails') && !STORY.ev);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     if (GL && !hidden) ctx.clearRect(0, 0, W, H);
     else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
@@ -1702,6 +1752,29 @@
       dome: [(52 * (0.4 + 0.6 * t)) / 255, (38 * (0.4 + 0.6 * t)) / 255, (26 * (0.4 + 0.6 * t)) / 255],
       cut: 0.2, curve: 1.25 // keep only the band itself, not the haze around it
     });
+  }
+  // VR: instead of pointing with an arrow, the sky turns (slowly, about the vertical only) so that what the
+  // presenter shows - a story scene, the host's view, a spot - comes round in front of where the phone faces.
+  var VRT = { key: '', goal: 0, cur: 0, at: 0 };
+  function vrLookTarget() {
+    if (STORY.ev) return { key: 'story' + SYNC.story.show + ':' + STORY.ev.i, az: C.enuToAltAz(STORY.ev.endDir).az };
+    if (followOn()) return { key: 'view' + Math.round(SYNC.view.yaw), az: SYNC.view.yaw };
+    var sp = syncActive() && SYNC.phase === 'guide' ? SYNC.spot : null;
+    if (sp) return { key: 'spot' + sp.id, az: spotAltAz(sp, st.minutes).az };
+    return null;
+  }
+  function vrTurned(raw) {
+    var tg = vrLookTarget();
+    if (tg && tg.key !== VRT.key) { // new target: work out once how far to turn, from where the head points now
+      VRT.key = tg.key;
+      var head = C.enuToAltAz(raw.f).az;
+      VRT.goal = VRT.cur + ((tg.az - (head + VRT.cur) + 540) % 360 - 180);
+    }
+    var now = performance.now(), dt = Math.min(0.25, (now - (VRT.at || now)) / 1000); VRT.at = now;
+    VRT.cur += (VRT.goal - VRT.cur) * Math.min(1, dt * 2.2); // settles in about 2 s, on slow phones too
+    if (Math.abs(VRT.cur) < 1e-3) return raw;
+    var a = -VRT.cur * D2R; // azimuth grows clockwise seen from above, rotZ turns counter-clockwise
+    return { f: rotZ(raw.f, a), r: rotZ(raw.r, a), u: rotZ(raw.u, a) };
   }
   // the story plays on its own night; otherwise the presenter's choice, then this phone's own
   function activeSky() {
@@ -1961,5 +2034,5 @@
     });
   }
   requestAnimationFrame(loop);
-  window.__sky = { intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
+  window.__sky = { intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, vrt: VRT, setRaw: function (cam) { rawCam = cam; st.sensorSeen = true; }, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
 })();

@@ -1,5 +1,5 @@
 // 별이 빛나는 밤에 VR — 동기화 서버 (Cloudflare Worker + Durable Object)
-// 폰들은 /ws 로 접속해서 상태를 받기만 하고, 관리자만 비밀번호(ADMIN_KEY)로 명령을 보낼 수 있어요.
+// 폰들은 /ws 로 접속해서 상태를 받기만 하고, 진행자 화면(admin.html)이 명령을 보내요. 비밀번호는 없어요.
 
 const ALLOWED = [/^https:\/\/[a-z0-9-]+\.github\.io$/, /^http:\/\/localhost(:\d+)?$/, /^http:\/\/127\.0\.0\.1(:\d+)?$/];
 
@@ -130,14 +130,11 @@ export class Room {
       ws.serializeAttachment(att); this.pushCounts(); return;
     }
     if (m.k === 'auth') {
-      if (this.env.ADMIN_KEY && safeEq(String(m.key || ''), String(this.env.ADMIN_KEY))) {
-        att.role = 'admin'; ws.serializeAttachment(att);
-        ws.send(JSON.stringify({ k: 'authok' }));
-        const s = await this.load();
-        ws.send(this.pack(s)); ws.send(JSON.stringify(this.counts())); this.pushCounts();
-      } else {
-        ws.send(JSON.stringify({ k: 'authfail', configured: !!this.env.ADMIN_KEY }));
-      }
+      // no presenter password any more: whoever opens admin.html for a room steers it (the room code keeps rooms apart)
+      att.role = 'admin'; ws.serializeAttachment(att);
+      ws.send(JSON.stringify({ k: 'authok' }));
+      const s = await this.load();
+      ws.send(this.pack(s)); ws.send(JSON.stringify(this.counts())); this.pushCounts();
       return;
     }
     if (m.k !== 'cmd' || att.role !== 'admin') return;

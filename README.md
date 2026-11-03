@@ -6,17 +6,17 @@
 | 주소 | 누가 | 하는 일 |
 | --- | --- | --- |
 | `index.html` | 참가자 휴대폰 | VR(카드보드) / 화면 모드로 하늘 보기. 별자리를 바라보면 그림과 설명이 나와요. 메뉴에서 날짜·장소를 고를 수 있어요. |
-| `admin.html` | 진행자 노트북 | 비밀번호로 들어가요. 오프닝 영상, 이야기 진행, 설명/자유 관찰 타이머, 같이 볼 곳, 화면 따라오게 하기, 하늘 날짜·장소, 참가자 화면 미리보기, 아래 진행자 도구 |
+| `admin.html` | 진행자 노트북 | 비밀번호 없이 바로 들어가요. 오프닝 영상, 이야기 진행, 설명/자유 관찰 타이머, 같이 볼 곳, 화면 따라오게 하기, 하늘 날짜·장소, 참가자 화면 미리보기, 아래 진행자 도구 |
 | `worker.js` | 인터넷 | 동기화 서버 (Cloudflare Worker + Durable Object) |
 
 ## 진행자 도구 (`admin.html` 오른쪽 메뉴)
-- **하늘 시각 · 날짜 · 장소**: 오후 6시~오전 6시 슬라이더, 1시간/10분 앞뒤로 건너뛰기, 속도(거꾸로 600배·60배, 멈춤, 실제, 10배·60배·600배), 날짜·장소.
+- **하늘 시각 · 날짜 · 장소**: 오후 6시~오전 6시 슬라이더, 1시간/10분 앞뒤로 건너뛰기, 속도(거꾸로 600배·60배, 멈춤, 실제, 10배·60배·600배), 날짜·장소. **일주운동 보기**를 누르면 별의 궤적을 켜고 600배로 흘려요.
 - **퀴즈**: 준비된 퀴즈(`quiz.js`)나 직접 만든 퀴즈를 내요.
   - 고르기 퀴즈: VR에서는 보기 카드가 하늘에 떠 있고 1.6초 바라보면 골라져요. 화면 모드에서는 눌러서 골라요.
   - 찾기 퀴즈: 별·별자리·행성을 찾아 가운데 동그라미로 2초 바라보면 정답이에요.
   - 진행자 화면에 보기별 인원이 실시간으로 나오고, ‘정답 공개’를 누르면 모든 폰에 정답과 설명이 떠요.
-- **화면에 보이는 것**: 별자리 그림·선·이름, 별 이름, 별의 궤적(지난 2시간), 은하수, 동서남북을 모든 폰에서 켬/끔, 또는 ‘각자’(참가자 메뉴대로).
-- **원하는 하늘로 이동 · 확대**: 행성·별자리·밝은 별·성단/은하 목록에서 골라 이동, 동서남북·머리 위 버튼, 확대/축소. 이동하면 ‘따라오게 하기’가 켜져서 화면 모드 폰은 같이 돌아가고, VR 폰에는 그쪽을 가리키는 화살표가 떠요(VR 화면을 억지로 돌리면 어지러워서요).
+- **화면에 보이는 것**: 별자리 그림·선·이름, 별 이름, 별의 궤적, 은하수, 동서남북을 모든 폰에서 켬/끔, 또는 ‘각자’(참가자 메뉴대로). 별의 궤적은 켠 뒤로 하늘 시간이 흐른 만큼만 그려져요. 시간을 빠르게 흘리면 별들이 북극성을 중심으로 원을 그리며 도는 모습이 보여요.
+- **원하는 하늘로 이동 · 확대**: 행성·별자리·밝은 별·성단/은하 목록에서 골라 이동, 동서남북·머리 위 버튼, 확대/축소. 이동하면 ‘따라오게 하기’가 켜져서 화면 모드 폰은 같이 돌아가고, VR 폰은 하늘이 천천히(약 2초) 좌우로 돌아서 그곳이 정면에 와요. 이야기 장면과 ‘같이 볼 곳’도 같은 방식이에요.
 
 ## 어떻게 동작하나요
 - **하늘 계산**: 별 5,044개(6.5등급까지)와 88개 별자리 선은 J2000 적도좌표로 들고 있어요. 매 프레임 "J2000 → 관측 날짜의 적도(세차·장동) → 그 장소의 지평좌표" 회전 행렬 하나를 만들어 모든 별에 곱해요(`js/sky-core.js`).
@@ -29,7 +29,7 @@
 
 ## 배포
 1. **사이트**: GitHub Pages(브랜치 `main`, 폴더 `/`). 휴대폰 기울기 센서는 HTTPS에서만 동작해요.
-2. **동기화 서버**: `wrangler deploy` (Cloudflare 계정 필요). 진행자 비밀번호는 `wrangler secret put ADMIN_KEY`로 넣어요.
+2. **동기화 서버**: `wrangler deploy` (Cloudflare 계정 필요). 진행자 비밀번호는 없앴어요. 방 코드(`?r=`)가 같은 사람끼리 같은 하늘을 봐요.
    - 날짜·장소 동기화(`sky` 명령)는 이번에 서버에 추가했어요. **서버를 다시 배포해야** 진행자가 고른 날짜가 휴대폰에 전달돼요. 배포 전에도 나머지는 그대로 동작하고, 참가자가 각자 메뉴에서 날짜를 고를 수는 있어요.
    - 서버 주소는 `js/app.js`, `js/admin.js`의 `SERVER`예요. 허용 출처는 `worker.js`의 `ALLOWED`(*.github.io, localhost)예요.
 
@@ -40,10 +40,9 @@
 ## 로컬에서 시험하기
 ```
 python3 -m http.server 8765                      # 저장소 루트에서
-printf 'ADMIN_KEY=test1234\n' > .dev.vars
 npx wrangler dev --port 8787 --local             # 다른 터미널
 ```
-`http://localhost:8765/admin.html?server=ws://localhost:8787` (비밀번호 test1234) 와 `http://localhost:8765/?r=<방 코드>&server=ws://localhost:8787`.
+`http://localhost:8765/admin.html?server=ws://localhost:8787` 와 `http://localhost:8765/?r=<방 코드>&server=ws://localhost:8787`.
 
 ## 파일
 ```
@@ -69,5 +68,6 @@ worker.js, wrangler.toml 동기화 서버
 - 별자리 그림: Johan Meuris / Stellarium 팀 "modern" sky culture 일러스트 (Free Art License 1.3, https://artlibre.org/licence/lal/en/). 크기를 줄이고 색을 바꿔 변형했으며 `art.js`의 그림도 같은 Free Art License를 따라요.
 - 은하수 사진 지도: NASA/Goddard Space Flight Center Scientific Visualization Studio, Deep Star Maps 2020 (Gaia DR2: ESA/Gaia/DPAC). `tools/build-milkyway.py`로 변환.
 - 토성 사진: NASA, ESA and the Hubble Heritage Team (STScI/AURA), 2009 — CC BY 4.0. `tools/build-saturn.py`로 배경을 투명하게 변환.
+- 안드로메다은하·좀생이별 사진: HG731GZ via Stellarium — CC BY 3.0 (`assets/photos/`, `js/photos.js`, vr_planetarium v3에서 가져옴).
 - 별·별자리 선 데이터: d3-celestial (Olaf Frohn, BSD-3-Clause). 행성 위치 계산: astronomy-engine (Don Cross, MIT).
 - 함께 만든 저장소: https://github.com/leedohyang15-design/Osong-vr
