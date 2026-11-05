@@ -1,6 +1,6 @@
 // Presenter's "CCTV" wall: small live snapshots of every participant's screen (sent by js/app.js every 1.5 s).
-// It opens its own connection to the room as a 'watch' socket; the first presenter page to watch a room gets a key
-// (kept in this browser), so other pages can't watch the same room. Snapshots are only the sky drawing.
+// It opens its own connection to the room as a 'watch' socket once the presenter has logged in, and proves itself with
+// the same presenter password (the server never sends phone screens to anyone else). Snapshots are only the sky drawing.
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
@@ -9,14 +9,17 @@
   var MODE = { vr: 'VR', screen: '화면', menu: '메뉴' };
   var ws = null, retry = 1000, tiles = {}, order = 0, denied = false;
 
-  function keyName() { return 'osong-cctvkey-' + room; }
+  function key() { var k = ''; try { k = sessionStorage.getItem('osong-key') || ''; } catch (e) {} return k; }
+  var started = false;
+  // connect only after the presenter logged in on this page (so the socket never sits in the room as a "phone")
+  setInterval(function () { if (!started && A.authed() && key()) { started = true; connect(); } }, 500);
   function connect() {
-    var my; try { my = ws = new WebSocket(URL_ + '/ws?room=' + room); } catch (e) { setTimeout(connect, 5000); return; }
-    my.onopen = function () { retry = 1000; var k = null; try { k = localStorage.getItem(keyName()); } catch (e) {} my.send(JSON.stringify({ k: 'watch', key: k })); };
+    var my; try { my = ws = new WebSocket(URL_ + '/ws?room=' + room + '&as=watch'); } catch (e) { setTimeout(connect, 5000); return; }
+    my.onopen = function () { retry = 1000; try { my.send(JSON.stringify({ k: 'watch', key: key() })); } catch (e) {} };
     my.onmessage = function (e) {
       if (my !== ws || e.data === 'pong') return;
       var m; try { m = JSON.parse(e.data); } catch (x) { return; }
-      if (m.k === 'watchok') { denied = false; try { localStorage.setItem(keyName(), m.key); } catch (x) {} render(); }
+      if (m.k === 'watchok') { denied = false; render(); }
       else if (m.k === 'watchdeny') { denied = true; render(); }
       else if (m.k === 'cam') show(m);
       else if (m.k === 'camgone') drop(m.id);
@@ -48,7 +51,7 @@
     $('cctvCount').textContent = n + '대';
     $('cctvWallCount').textContent = n + '대';
     $('cctvEmpty').hidden = n > 0;
-    $('cctvEmpty').textContent = denied ? '이 방의 화면은 다른 노트북에서 보고 있어요. 방 이름을 바꾸면 여기서 볼 수 있어요.' : '휴대폰이 들어오면 여기에 화면이 떠요.';
+    $('cctvEmpty').textContent = denied ? '화면 보기를 사용하려면 진행자로 로그인해 주세요.' : '휴대폰이 들어오면 여기에 화면이 떠요.';
   }
   setInterval(function () {
     var now = Date.now();
@@ -71,5 +74,4 @@
   window.__cctv = { wall: wall, home: function () { return $('cctvHome'); } };
 
   render();
-  connect();
 })();

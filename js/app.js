@@ -468,8 +468,8 @@
       c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
       var hint = withHost() && freeView() ? '↓ 아래를 보면 보기 메뉴가 나와요' : '↓ 아래를 내려다보면 설정이 나와요';
       var hw = c.measureText(hint).width;
-      c.fillStyle = 'rgba(14,15,20,0.94)'; roundRect(view.cx - hw / 2 - 10, view.cy + view.R * 0.66 - fontPx * 0.8, hw + 20, fontPx * 1.6, fontPx * 0.8); c.fill();
-      c.fillStyle = '#e8cf8a'; c.fillText(hint, view.cx, view.cy + view.R * 0.66);
+      c.fillStyle = UI.panel; roundRect(view.cx - hw / 2 - 10, view.cy + view.R * 0.66 - fontPx * 0.8, hw + 20, fontPx * 1.6, fontPx * 0.8); c.fill();
+      c.fillStyle = UI.ink; c.fillText(hint, view.cx, view.cy + view.R * 0.66);
     }
     // vignette for lenses, then the heads-up text on top
     if (view.vr) {
@@ -779,10 +779,10 @@
     c.fillText(L.top, view.cx, L.topY);
     if (!sel || !L.card) return;
     var k = L.card;
-    c.fillStyle = 'rgba(14,15,20,0.97)';
+    c.fillStyle = UI.panel;
     roundRect(k.x, k.y, k.w, k.h, fontPx * 0.6); c.fill();
-    c.strokeStyle = 'rgba(232,207,138,0.35)'; c.lineWidth = 1; c.stroke();
-    c.fillStyle = '#e8cf8a';
+    c.strokeStyle = UI.line; c.lineWidth = 1; c.stroke();
+    c.fillStyle = UI.ink;
     c.font = Math.round(fontPx * 1.2) + 'px ' + LABEL_FONT;
     c.textAlign = 'left';
     c.fillText(sel.name, k.x + fontPx * 0.7, k.y + fontPx * 1.15);
@@ -829,6 +829,10 @@
   }
 
   // ---------- main loop ----------
+  // UI drawn into the sky canvas (panels, cards, captions) uses the same calm greys as the pages (css/tokens.css).
+  // The warm cream stays only for guidance in the sky itself: rings and arrows that point at a target.
+  var UI = { panel: 'rgba(41,42,45,0.95)', card: 'rgba(55,56,60,0.96)', sel: 'rgba(81,81,87,0.98)', line: 'rgba(110,111,116,0.85)',
+    ink: '#E8E4DD', ink2: '#B7B5B0', dim: 'rgba(232,228,221,0.45)', ok: '#7FBF8E', okFill: 'rgba(58,92,68,0.97)', warn: '#D98C7A', inkOn: '#292A2D' };
   var LABEL_FONT = '"Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif';
   var TITLE_FONT = LABEL_FONT;
   var BODY_FONT = LABEL_FONT;
@@ -946,14 +950,15 @@
         if (Math.abs(gx - b.x) < b.w / 2 + 0.02 && Math.abs(gy - b.y) < b.h / 2 + 0.02) { hit = b; break; }
       }
     }
-    if (!hit) { PANEL.id = null; PANEL.t = 0; return; }
-    if (PANEL.id !== hit.id) { PANEL.id = hit.id; PANEL.t = 0; PANEL.repeat = 0; return; }
+    if (!hit) { PANEL.id = null; PANEL.t = 0; PANEL.latched = false; return; }
+    if (PANEL.id !== hit.id) { PANEL.id = hit.id; PANEL.t = 0; PANEL.repeat = 0; PANEL.latched = false; return; }
+    if (PANEL.latched && !hit.rep) return;
     PANEL.t += dt;
     if (PANEL.t >= DWELL) {
       if (hit.rep) {
         PANEL.repeat += dt;
         if (PANEL.repeat >= REPEAT || PANEL.repeat === dt) { PANEL.repeat = 0.0001; applyBtn(hit.id); }
-      } else { applyBtn(hit.id); PANEL.id = null; PANEL.t = -0.8; }
+      } else { applyBtn(hit.id); PANEL.latched = true; PANEL.t = 0; }
     }
   }
   function drawPanel(view, fontPx) {
@@ -968,38 +973,38 @@
     function hpx() { return Math.hypot(A[0] - Dp[0], A[1] - Dp[1]); }
     function center(x, y, out) { return planePt(view, x, y, out); }
     // backdrop
-    if (quad(0.2, -0.04, 1.82, 1.04)) { c.fillStyle = 'rgba(14,15,20,0.97)'; c.fill(); c.strokeStyle = 'rgba(232,207,138,0.4)'; c.lineWidth = 1.5; c.stroke(); }
+    if (quad(0.2, -0.04, 1.82, 1.04)) { c.fillStyle = UI.panel; c.fill(); c.strokeStyle = UI.line; c.lineWidth = 1.5; c.stroke(); }
     c.textBaseline = 'middle';
     var P2 = [0, 0];
     // title
-    if (center(-0.2, 0.48, P2)) { c.font = Math.round(fontPx * 1.05) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#e8cf8a'; c.fillText('설정 · 버튼을 1초 바라보세요', P2[0], P2[1]); }
+    if (center(-0.2, 0.48, P2)) { c.font = Math.round(fontPx * 1.05) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = UI.ink; c.fillText('설정 · 버튼을 1초 바라보세요', P2[0], P2[1]); }
     // row labels + values
     for (var r = 0; r < ROWS.length; r++) {
       if (center(-0.76, ROWS[r].y, P2)) { c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.textAlign = 'right'; c.fillStyle = 'rgba(241,242,245,0.9)'; c.fillText(ROWS[r].name, P2[0] + fontPx * 3.2, P2[1]); }
       if (center(0, ROWS[r].y, P2)) { c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#ffffff'; c.fillText(String(ROWS[r].val()), P2[0], P2[1]); }
     }
     var canEdit = canEditView();
-    if (center(0.86, 0.48, P2)) { c.font = Math.round(fontPx * 0.85) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = canEdit ? '#e8cf8a' : 'rgba(241,242,245,0.55)'; c.fillText(canEdit ? '켜고 끄기' : '자유 관찰 때만', P2[0], P2[1]); }
+    if (center(0.86, 0.48, P2)) { c.font = Math.round(fontPx * 0.85) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = canEdit ? UI.ink2 : UI.dim; c.fillText(canEdit ? '켜고 끄기' : '자유 관찰 때만', P2[0], P2[1]); }
     // buttons
     for (var i = 0; i < BTNS.length; i++) {
       var b = BTNS[i];
       if (!quad(b.x, b.y, b.w, b.h)) continue;
       var active = PANEL.id === b.id, prog = active ? Math.max(0, Math.min(1, PANEL.t / DWELL)) : 0, on = b.view ? viewOn(b.view) : false, dim = b.view && !canEdit;
-      c.fillStyle = active ? 'rgba(232,207,138,' + (0.25 + 0.55 * prog) + ')' : on ? 'rgba(232,207,138,0.30)' : 'rgba(40,42,52,0.95)';
-      c.fill(); c.strokeStyle = active || on ? '#e8cf8a' : 'rgba(255,255,255,0.28)'; c.lineWidth = 1.5; c.stroke();
+      c.fillStyle = active ? 'rgba(232,228,221,' + (0.12 + 0.3 * prog).toFixed(3) + ')' : on ? UI.sel : UI.card;
+      c.fill(); c.strokeStyle = active || on ? UI.ink : UI.line; c.lineWidth = on ? 2 : 1.2; c.stroke();
       var bw = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]);
       if (center(b.x, b.y, P2)) {
         var fs = b.view ? hpx() * 0.5 : Math.max(fontPx * 0.9, hpx() * (b.label.length > 2 ? 0.38 : 0.7));
         c.font = Math.round(fs) + 'px ' + LABEL_FONT;
         var tw = c.measureText(b.label).width; if (tw > bw * 0.86) { fs *= bw * 0.86 / tw; c.font = Math.round(fs) + 'px ' + LABEL_FONT; }
-        c.textAlign = 'center'; c.fillStyle = active ? '#fff' : dim ? 'rgba(241,242,245,0.4)' : 'rgba(241,242,245,0.95)'; c.fillText(b.label, P2[0], P2[1]);
+        c.textAlign = 'center'; c.fillStyle = dim ? UI.dim : UI.ink; c.fillText(b.label, P2[0], P2[1]);
       }
     }
-    if (PANEL.toastT > 0 && center(0, -0.44, P2)) { c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#9fe8b0'; c.fillText(PANEL.toast, P2[0], P2[1]); }
+    if (PANEL.toastT > 0 && center(0, -0.44, P2)) { c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = UI.ok; c.fillText(PANEL.toast, P2[0], P2[1]); }
     // dwell ring around the reticle
     if (PANEL.id && PANEL.t > 0) {
       var pr = Math.min(1, PANEL.t / DWELL);
-      c.strokeStyle = '#e8cf8a'; c.lineWidth = Math.max(3, fontPx * 0.28);
+      c.strokeStyle = UI.ink; c.lineWidth = Math.max(3, fontPx * 0.28);
       c.beginPath(); c.arc(view.cx, view.cy, fontPx * 1.15, -Math.PI / 2, -Math.PI / 2 + pr * Math.PI * 2); c.stroke();
     }
   }
@@ -1029,11 +1034,25 @@
       for (var j = 0; j <= 2; j++) for (var i2 = 0; i2 <= 2; i2++) { var u = d.w * i2 / 2, v = d.h * j / 2; uv.push([u, v]); vecs.push(dir(u, v)); }
       var cen = dir(d.w / 2, d.h / 2), rad = 0;
       vecs.forEach(function (q) { rad = Math.max(rad, Math.acos(Math.max(-1, Math.min(1, q[0] * cen[0] + q[1] * cen[1] + q[2] * cen[2])))); });
-      var img = new Image(), item = { id: d.id, w: d.w, h: d.h, img: img, ok: false, uv: uv, vecs: vecs, cen: cen, rad: rad };
-      img.onload = function () { item.ok = true; };
-      img.src = d.src;
+      var item = { id: d.id, w: d.w, h: d.h, img: null, src: d.src, ok: false, uv: uv, vecs: vecs, cen: cen, rad: rad };
       ART.push(item); ARTI[d.id] = item;
     });
+  }
+  function artImage(it) { // decode a figure the first time it is about to be drawn
+    if (it.img) return it.ok;
+    var img = new Image(); it.img = img;
+    img.onload = function () { it.ok = true; };
+    img.src = it.src;
+    return false;
+  }
+  var artScript = false;
+  function artWanted() { return st.mode !== 'menu' && !NET.sim && (artOn() || !!STORY.ev || storyOn()); }
+  function loadArtScript() { // the pictures are 2 MB, so the menu never waits for them
+    if (artScript || window.SKY_ART) return;
+    artScript = true;
+    var sc = document.createElement('script'); sc.src = 'art.js?v=2'; sc.async = true;
+    sc.onerror = function () { artScript = false; };
+    document.head.appendChild(sc);
   }
 
   var artEma = 0, artSlowT = 0, artSlow = false;
@@ -1113,12 +1132,14 @@
     var half = fovNow * 0.5 * D2R * (view.vr ? 1.15 : Math.hypot(W, H) / Math.max(W, H));
     var base = 0.2 + 0.14 * frame.dark;
     for (var i = 0; i < ART.length; i++) {
-      var it = ART[i]; if (!it.ok) continue;
+      var it = ART[i];
       var alpha;
       if (figs) { var fg = figs[it.id]; if (!fg) continue; alpha = Math.min(0.55, base * 1.8) * fg.p * fg.a; if (alpha < 0.01) continue; }
       else { if (!ARTF[it.id]) continue; alpha = ARTF[it.id] * (0.42 + 0.2 * frame.dark); }
       if (altOf(it.cen) < -Math.sin(it.rad)) continue;
       toCam(it.cen, CV);
+      if (Math.acos(Math.max(-1, Math.min(1, CV[2]))) - it.rad > half + 0.35) continue;   // a little margin so a picture is decoded just before it comes into view
+      if (!artImage(it)) continue;
       if (Math.acos(Math.max(-1, Math.min(1, CV[2]))) - it.rad > half) continue;
       var m = 0, su = 0, sv = 0, suu = 0, svv = 0, suv = 0, sx = 0, sy = 0, sux = 0, svx = 0, suy = 0, svy = 0;
       for (var k = 0; k < 9; k++) {
@@ -1180,7 +1201,7 @@
     var sy = SYNC.story, show = showById(sy.show);
     var i = Math.max(0, Math.min(show.scenes.length - 1, sy.i));
     var s = show.scenes[i], p = i > 0 ? show.scenes[i - 1] : null;
-    var t = (Date.now() - sy.t0) / 1000;
+    var t = (sy.paused ? sy.el : Date.now() - sy.t0) / 1000;   // paused by the presenter (or under a quiz): everything in the scene stands still
     var from = p ? p.view : (s.start || s.view), to = s.view;
     var k = s.move > 0 ? easeS(t / s.move) : 1;
     var minutes = from.minutes + (to.minutes - from.minutes) * k;
@@ -1242,11 +1263,11 @@
     var pad = fontPx * 0.9, bw = Math.min(Math.max(tw, sw) + pad * 2, vr ? view.R * 0.8 : W * 0.42), bh = tf * 1.0 + sf * 1.5 + pad * 1.4;
     var x = vr ? view.cx + view.R * 0.12 : W - bw - 20, y = vr ? view.cy - bh * 0.4 : H / 2 - bh / 2;
     c.globalAlpha = ev.caption.a;
-    c.fillStyle = 'rgba(14,15,20,0.96)'; roundRect(x, y, bw, bh, fontPx * 0.6); c.fill();
+    c.fillStyle = UI.panel; roundRect(x, y, bw, bh, fontPx * 0.6); c.fill();
     c.textAlign = 'left'; c.textBaseline = 'middle';
-    c.fillStyle = '#f1f2f5'; c.font = '700 ' + tf + 'px ' + TITLE_FONT;
+    c.fillStyle = UI.ink; c.font = '600 ' + tf + 'px ' + TITLE_FONT;
     c.fillText(ev.caption.title, x + pad, y + pad * 0.7 + tf * 0.6, bw - pad * 2);
-    c.fillStyle = '#a4a7b3'; c.font = sf + 'px ' + BODY_FONT;
+    c.fillStyle = UI.ink2; c.font = sf + 'px ' + BODY_FONT;
     c.fillText(ev.caption.sub, x + pad, y + pad * 0.7 + tf * 1.0 + sf * 0.9, bw - pad * 2);
     c.globalAlpha = 1;
   }
@@ -1281,7 +1302,7 @@
     function add(o) { if (o.v || o.body) SPOTS.push(o); }
     add({ id: 'sat', name: '토성', body: 'Saturn', info: BODY_INFO.Saturn.text });
     add({ id: 'pol', name: '북극성', v: starV('북극성'), info: STAR_INFO['북극성'] });
-    add({ id: 'peg', name: '가을의 대사각형', v: consV('Peg'), cons: 'Peg', info: CONS_INFO.Peg });
+    add({ id: 'peg', name: '가을의 대사각형', v: C.radec2vec(354.6, 21.9), cons: 'Peg', info: CONS_INFO.Peg });   // the middle of the square (알페라츠·셰아트·마르카브·알게니브)
     add({ id: 'cas', name: '카시오페이아자리', v: consV('Cas'), cons: 'Cas', info: CONS_INFO.Cas });
     add({ id: 'and', name: '안드로메다은하', v: DSO[0].v, info: DSO[0].text });
     add({ id: 'per', name: '페르세우스자리', v: consV('Per'), cons: 'Per', info: CONS_INFO.Per });
@@ -1311,7 +1332,7 @@
     setTimeout(renderSkyWhere, 0);
     if (s.story && s.story.show && !SYNC.story) MINE = {};   // a new story: back to the presenter's settings
     SYNC.own = s.own !== false;
-    SYNC.story = s.story && s.story.show ? { show: s.story.show, i: s.story.i | 0, t0: Date.now() - (s.story.el || 0), sky: !!s.story.sky } : null;
+    SYNC.story = s.story && s.story.show ? { show: s.story.show, i: s.story.i | 0, t0: Date.now() - (s.story.el || 0), el: s.story.el || 0, paused: !!s.story.paused, sky: !!s.story.sky } : null;
     SYNC.pin = s.pin === 'host' || s.pin === 'event' ? s.pin : null;
     SYNC.view = s.view ? { on: !!s.view.on, yaw: +s.view.yaw || 0, pitch: +s.view.pitch || 0, fov: +s.view.fov || 75 } : null;
     INTRO.srv = s.intro && s.intro.st ? { st: s.intro.st, n: s.intro.n | 0, len: typeof s.intro.len === 'number' ? s.intro.len : null, t0: Date.now() - (s.intro.el || 0), playT0: Date.now() - (s.intro.pel != null ? s.intro.pel : s.intro.el || 0) } : null;
@@ -1360,8 +1381,8 @@
   function cueText(txt, x, y, fontPx, color) {
     var c = ctx; c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
     var w = c.measureText(txt).width;
-    c.fillStyle = 'rgba(14,15,20,0.94)'; roundRect(x - w / 2 - 8, y - fontPx * 0.78, w + 16, fontPx * 1.56, fontPx * 0.78); c.fill();
-    c.fillStyle = color || '#e8cf8a'; c.fillText(txt, x, y);
+    c.fillStyle = UI.panel; roundRect(x - w / 2 - 8, y - fontPx * 0.78, w + 16, fontPx * 1.56, fontPx * 0.78); c.fill();
+    c.fillStyle = color || UI.ink; c.fillText(txt, x, y);
   }
   // the end of the closing timer: the sky goes black (0.8 s), then the message; two short lines so it fits one lens
   function drawClosing(view) {
@@ -1385,10 +1406,10 @@
     var rad = vr ? view.R : Math.min(W, H) / 2;
     if (SYNC.hold && syncActive()) {
       c.fillStyle = '#04060f'; c.fillRect(view.clip[0], view.clip[1], view.clip[2], view.clip[3]);
-      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e8cf8a';
-      c.font = Math.round(fontPx * 1.6) + 'px ' + LABEL_FONT;
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = UI.ink;
+      c.font = '600 ' + Math.round(fontPx * 1.6) + 'px ' + LABEL_FONT;
       c.fillText('잠깐 쉬어요', vr ? cx : W / 2, (vr ? cy : H / 2) - fontPx * 1.2);
-      c.fillStyle = '#f1f2f5'; c.font = Math.round(fontPx * 1.05) + 'px ' + BODY_FONT;
+      c.fillStyle = UI.ink2; c.font = Math.round(fontPx * 1.05) + 'px ' + BODY_FONT;
       c.fillText(SYNC.note || '헤드셋을 벗고 앞을 봐 주세요', vr ? cx : W / 2, (vr ? cy : H / 2) + fontPx * 0.8);
       return;
     }
@@ -1405,8 +1426,8 @@
     if (txt) {
     c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
     var tw = c.measureText(txt).width;
-    c.fillStyle = 'rgba(14,15,20,0.96)'; roundRect((vr ? cx : W / 2) - tw / 2 - 10, topY - fontPx * 0.75, tw + 20, fontPx * 1.5, fontPx * 0.75); c.fill();
-    c.fillStyle = low ? '#ff9a6b' : '#e8cf8a'; c.fillText(txt, vr ? cx : W / 2, topY);
+    c.fillStyle = UI.panel; roundRect((vr ? cx : W / 2) - tw / 2 - 10, topY - fontPx * 0.75, tw + 20, fontPx * 1.5, fontPx * 0.75); c.fill();
+    c.fillStyle = low ? UI.warn : UI.ink; c.fillText(txt, vr ? cx : W / 2, topY);
     }
     // closing timer just started: tell VR viewers they can look things up now
     if (vr && tm && tm.closing && !storyNow && tm.total - timerRemaining(tm) < 10000) cueText('별자리를 바라보면 설명이 나와요', cx, cy + rad * 0.62, fontPx * 0.85);
@@ -1414,8 +1435,8 @@
     if (SYNC.note) {
       c.font = Math.round(fontPx * 1.05) + 'px ' + BODY_FONT;
       var ny = vr ? cy + rad * 0.44 : H - 70, nw = Math.min(c.measureText(SYNC.note).width, (vr ? rad * 1.5 : W - 40));
-      c.fillStyle = 'rgba(232,207,138,0.95)'; roundRect((vr ? cx : W / 2) - nw / 2 - 12, ny - fontPx * 0.8, nw + 24, fontPx * 1.6, fontPx * 0.8); c.fill();
-      c.fillStyle = '#2a1d00'; c.fillText(SYNC.note, vr ? cx : W / 2, ny, nw);
+      c.fillStyle = UI.ink; roundRect((vr ? cx : W / 2) - nw / 2 - 12, ny - fontPx * 0.8, nw + 24, fontPx * 1.6, fontPx * 0.8); c.fill();
+      c.fillStyle = UI.inkOn; c.fillText(SYNC.note, vr ? cx : W / 2, ny, nw);
     }
     // target cue
     var sp = SYNC.phase === 'guide' ? SYNC.spot : null, e, label, cam = st.cam;
@@ -1432,7 +1453,7 @@
       e = C.apply(frame.M, spotVec(sp, st.minutes)); label = sp.name;
     }
     if (e[2] < -0.05) {
-      c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.fillStyle = 'rgba(232,207,138,0.9)'; c.textAlign = 'center';
+      c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.fillStyle = UI.ink2; c.textAlign = 'center';
       c.fillText(label + '은(는) 지금 지평선 아래예요', vr ? cx : W / 2, vr ? cy + rad * 0.5 : H - 40);
       return;
     }
@@ -1464,7 +1485,29 @@
   // ---------- quiz: the presenter opens a question; answer by looking (VR) or tapping (screen mode) ----------
   // choice: answer cards hang in the sky in front of where you looked when the question opened; stare ~1.6 s to pick.
   // find: look at the named star / constellation / planet for ~2 s. The server only counts answers; the phone checks them.
-  var QZ = { n: 0, mine: -1, found: false, anchor: null, dwell: -1, dwellT: 0, findT: 0, dom: '', last: 0 };
+  var QZ = { n: 0, mine: -1, found: false, anchor: null, dwell: -1, dwellT: 0, findT: 0, dom: '', last: 0, pend: null, srv: null };
+  // QZ.pend: my answer not yet confirmed by the server (kept in this browser, resent after a reconnect)
+  // QZ.srv: my answer as the server has it ({ n, a }), sent back after a reconnect so the phone shows it again
+  var PID = (function () {
+    var id = ''; try { id = localStorage.getItem('osong-pid') || ''; } catch (e) {}
+    if (!/^[a-z0-9]{6,24}$/.test(id)) { id = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6); try { localStorage.setItem('osong-pid', id); } catch (e) {} }
+    return id;
+  })();
+  function pendKey() { return 'osong-qpend-' + (NET.room || ''); }
+  try { var pj = JSON.parse(sessionStorage.getItem(pendKey()) || 'null'); if (pj && pj.n > 0) QZ.pend = pj; } catch (e) {}
+  function quizAck(m) { // the server confirmed (or restored) my answer
+    if (!m || !(m.n > 0)) return;
+    if (QZ.pend && QZ.pend.n === m.n && (m.a === QZ.pend.a || m.k === 'ansok')) { QZ.pend = null; try { sessionStorage.removeItem(pendKey()); } catch (e) {} }
+    if (typeof m.a === 'number') QZ.srv = { n: m.n, a: m.a };
+    if (QZ.n === m.n) quizRestore();
+  }
+  function quizRestore() { // put the remembered answer back on screen for the current quiz
+    var q = SYNC.quiz, r = QZ.pend && QZ.pend.n === QZ.n ? QZ.pend : QZ.srv && QZ.srv.n === QZ.n ? QZ.srv : null;
+    if (!q || !r) return;
+    if (q.type === 'find') { if (r.a === 1) QZ.found = true; }
+    else QZ.mine = r.a;
+    QZ.dom = '';
+  }
   var QZ_DWELL = 1.6, QZ_FIND = 2.0;
   function quizOn() { return !!(NET.room && SYNC.has && SYNC.quiz) && st.mode !== 'menu' && !introCovers(); }
   function quizTargetVec(t) {
@@ -1473,9 +1516,51 @@
     if (t.kind === 'cons') { for (var i = 0; i < CONS.length; i++) if (CONS[i].id === t.id) return CONS[i].v; return null; }
     if (t.kind === 'body') return S.planets[t.id] ? C.radec2vec.apply(null, C.bodyRaDec(S, t.id, st.minutes)) : null;
     if (t.kind === 'radec') { var p = String(t.id).split(','); return p.length === 2 ? C.radec2vec(+p[0], +p[1]) : null; }
+    if (t.kind === 'ast') { var as = ASTERISMS[t.id]; return as ? as.cen : null; }
     return null;
   }
-  function quizSend(a) { if (NET.ws && NET.ws.readyState === 1) { try { NET.ws.send(JSON.stringify({ k: 'ans', n: QZ.n, a: a })); } catch (e) {} } }
+  // Asterisms: corners in J2000 (deg). A look counts when the centre of the view is inside the shape (plus a small margin).
+  var ASTERISMS = {
+    GSq: { name: '가을의 대사각형', corners: [[2.097, 29.091], [345.944, 28.083], [346.190, 15.205], [3.309, 15.184]], margin: 3 } // 알페라츠 · 셰아트 · 마르카브 · 알게니브
+  };
+  (function () {
+    for (var id in ASTERISMS) {
+      var as = ASTERISMS[id], s = [0, 0, 0];
+      as.vecs = as.corners.map(function (c) { var v = C.radec2vec(c[0], c[1]); s[0] += v[0]; s[1] += v[1]; s[2] += v[2]; return v; });
+      var n = Math.hypot(s[0], s[1], s[2]); as.cen = [s[0] / n, s[1] / n, s[2] / n];
+    }
+  })();
+  function inAsterism(as, f, M) { // is the sky direction f (ENU) inside the asterism, seen from the centre (gnomonic plane)?
+    var c = C.apply(M, as.cen), cd = c[0] * f[0] + c[1] * f[1] + c[2] * f[2];
+    if (cd <= 0.2) return false;
+    var ex = [c[1], -c[0], 0], el = Math.hypot(ex[0], ex[1]); if (el < 1e-6) ex = [1, 0, 0]; else { ex[0] /= el; ex[1] /= el; }
+    var ey = [c[1] * ex[2] - c[2] * ex[1], c[2] * ex[0] - c[0] * ex[2], c[0] * ex[1] - c[1] * ex[0]];
+    function pl(v) { var d = c[0] * v[0] + c[1] * v[1] + c[2] * v[2]; return [(v[0] * ex[0] + v[1] * ex[1] + v[2] * ex[2]) / d, (v[0] * ey[0] + v[1] * ey[1] + v[2] * ey[2]) / d]; }
+    var p = pl(f), poly = as.vecs.map(function (v) { return pl(C.apply(M, v)); }), inside = false, dmin = 1e9;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var a = poly[i], b = poly[j];
+      if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+      var dx = b[0] - a[0], dy = b[1] - a[1], u = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+      dmin = Math.min(dmin, Math.hypot(p[0] - a[0] - u * dx, p[1] - a[1] - u * dy));
+    }
+    return inside || dmin < Math.tan(as.margin * D2R);
+  }
+  function quizLookOk(t) { // is the centre of the view on the find-quiz target?
+    if (t.kind === 'ast') { var as = ASTERISMS[t.id]; return !!as && inAsterism(as, st.cam.f, frame.M); }
+    var v = quizTargetVec(t); if (!v) return false;
+    return angFromView(C.apply(frame.M, v)) < (t.kind === 'cons' ? 10 : 3.5);
+  }
+  function quizTargetAlt(t) { var v = quizTargetVec(t); return v ? altOf(v) : 90; }
+  function quizSend(a) {
+    if (NET.hostview || NET.sim) return;   // the presenter's own sky view and previews are not participants
+    QZ.pend = { n: QZ.n, a: a }; try { sessionStorage.setItem(pendKey(), JSON.stringify(QZ.pend)); } catch (e) {}
+    quizFlush();
+  }
+  function quizFlush() { // (re)send the answer the server has not confirmed yet
+    var p = QZ.pend; if (!p) return;
+    if (!SYNC.quiz || SYNC.quiz.n !== p.n) { if (SYNC.has && (!SYNC.quiz || SYNC.quiz.n > p.n)) { QZ.pend = null; try { sessionStorage.removeItem(pendKey()); } catch (e) {} } return; }
+    if (NET.ws && NET.ws.readyState === 1) { try { NET.ws.send(JSON.stringify({ k: 'ans', n: p.n, a: p.a, pid: PID })); } catch (e) {} }
+  }
   function quizCards() { // ENU directions of the answer cards around the anchor
     // a 2 x 2 grid (one row for two answers), 26° apart across and 11° apart down, measured on the sky
     var q = SYNC.quiz, n = q.opts.length, out = [], an = QZ.anchor;
@@ -1491,7 +1576,7 @@
     var now = performance.now(), dt = Math.min(0.5, (now - (QZ.last || now)) / 1000); QZ.last = now; // real time, even on slow phones
     var q = quizOn() ? SYNC.quiz : null;
     if (!q) { if (QZ.dom) { $('quizBox').hidden = true; QZ.dom = ''; } return; }
-    if (q.n !== QZ.n) { QZ.n = q.n; QZ.mine = -1; QZ.found = false; QZ.anchor = null; QZ.dwell = -1; QZ.dwellT = 0; QZ.findT = 0; }
+    if (q.n !== QZ.n) { QZ.n = q.n; QZ.mine = -1; QZ.found = false; QZ.anchor = null; QZ.dwell = -1; QZ.dwellT = 0; QZ.findT = 0; quizRestore(); }
     if (!QZ.anchor && st.cam) { var aa = C.enuToAltAz(st.cam.f); QZ.anchor = { az: aa.az, alt: Math.max(12, Math.min(55, aa.alt)) }; }
     if (q.st === 'open') {
       if (q.type === 'choice' && st.mode === 'vr') {
@@ -1500,10 +1585,8 @@
         if (hit !== QZ.dwell) { QZ.dwell = hit; QZ.dwellT = 0; }
         else if (hit >= 0 && hit !== QZ.mine) { QZ.dwellT += dt; if (QZ.dwellT >= QZ_DWELL) { QZ.mine = hit; quizSend(hit); } }
       } else if (q.type === 'find' && !QZ.found) {
-        var v = quizTargetVec(q.target);
-        if (v) {
-          var tol = q.target.kind === 'cons' ? 10 : 3.5;
-          if (angFromView(C.apply(frame.M, v)) < tol) { QZ.findT += dt; if (QZ.findT >= QZ_FIND) { QZ.found = true; quizSend(1); } }
+        if (quizTargetVec(q.target)) {
+          if (quizLookOk(q.target)) { QZ.findT += dt; if (QZ.findT >= QZ_FIND) { QZ.found = true; quizSend(1); } }
           else QZ.findT = Math.max(0, QZ.findT - dt * 2);
         }
       }
@@ -1511,6 +1594,7 @@
     if (st.mode === 'screen') quizDom(q); else if (QZ.dom) { $('quizBox').hidden = true; QZ.dom = ''; }
   }
   function quizResult(q) {
+    if (q.type === 'find' && !QZ.found && quizTargetAlt(q.target) < 0) return '지금 이 하늘에서는 지평선 아래에 있어서 보이지 않아요.' + (q.st === 'reveal' && q.ex ? ' ' + q.ex : '');
     if (q.type === 'find') return q.st === 'reveal' ? (QZ.found ? '찾았어요! ' : '여기 있어요. ') + (q.ex || '') : QZ.found ? '찾았어요! 정답 공개를 기다려요.' : (QZ.findT > 0.2 ? '조금만 더 바라봐요…' : '하늘을 둘러보며 찾아보세요. 찾으면 가운데 동그라미로 2초 바라봐요.');
     if (q.st === 'reveal') return (QZ.mine === q.ans ? '정답! ' : QZ.mine >= 0 ? '아쉬워요. 정답은 ‘' + q.opts[q.ans] + '’. ' : '정답은 ‘' + q.opts[q.ans] + '’. ') + (q.ex || '');
     return QZ.mine >= 0 ? '‘' + q.opts[QZ.mine] + '’을(를) 골랐어요. 바꿔도 돼요.' : '';
@@ -1540,29 +1624,34 @@
         if (!proj(view, CV[0], CV[1], CV[2], P)) continue;
         var right = q.st === 'reveal' && i === q.ans, dim = q.st === 'reveal' && i !== q.ans;
         c.globalAlpha = dim ? 0.45 : 1;
-        c.fillStyle = right ? 'rgba(47,107,71,0.96)' : QZ.mine === i ? 'rgba(232,207,138,0.96)' : 'rgba(14,15,20,0.93)';
+        c.fillStyle = right ? UI.okFill : QZ.mine === i ? UI.sel : UI.card;
         roundRect(P[0] - w / 2, P[1] - h / 2, w, h, fontPx * 0.5); c.fill();
-        c.strokeStyle = 'rgba(232,207,138,0.5)'; c.lineWidth = 1; c.stroke();
-        c.fillStyle = QZ.mine === i && !right ? '#2a1d00' : '#f1f2f5';
+        c.strokeStyle = right ? UI.ok : QZ.mine === i ? UI.ink : UI.line; c.lineWidth = QZ.mine === i || right ? 2 : 1; c.stroke();
+        c.fillStyle = UI.ink;
         c.font = Math.round(fs) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
         c.fillText((i + 1) + '. ' + q.opts[i], P[0], P[1], w - fs);
         if (q.st === 'open' && QZ.dwell === i && i !== QZ.mine && QZ.dwellT > 0.05) { // filling bar while you stare
-          c.fillStyle = 'rgba(232,207,138,0.95)';
+          c.fillStyle = UI.ink;
           c.fillRect(P[0] - w / 2 + 6, P[1] + h / 2 - 5, (w - 12) * Math.min(1, QZ.dwellT / QZ_DWELL), 3);
         }
       }
       c.globalAlpha = 1;
     }
     if (q.type === 'find' && (q.st === 'reveal' || QZ.found)) { // circle the target
-      var v = quizTargetVec(q.target);
+      var v = quizTargetVec(q.target), astr = q.target.kind === 'ast' ? ASTERISMS[q.target.id] : null;
+      if (astr) { // outline the shape
+        c.strokeStyle = UI.ok; c.lineWidth = 2; c.beginPath();
+        for (var ai = 0; ai <= astr.vecs.length; ai++) { var av = astr.vecs[ai % astr.vecs.length]; toCam(av, CV); if (!proj(view, CV[0], CV[1], CV[2], P)) break; if (ai === 0) c.moveTo(P[0], P[1]); else c.lineTo(P[0], P[1]); }
+        c.stroke();
+      }
       if (v) { toCam(v, CV); if (proj(view, CV[0], CV[1], CV[2], P)) {
-        c.strokeStyle = '#7fe0a0'; c.lineWidth = 2; c.beginPath(); c.arc(P[0], P[1], q.target.kind === 'cons' ? fontPx * 3 : fontPx * 1.2, 0, Math.PI * 2); c.stroke();
-        c.fillStyle = '#7fe0a0'; c.font = Math.round(fontPx) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'bottom';
+        c.strokeStyle = UI.ok; c.lineWidth = 2; c.beginPath(); c.arc(P[0], P[1], q.target.kind === 'cons' ? fontPx * 3 : fontPx * 1.2, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = UI.ok; c.font = Math.round(fontPx) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'bottom';
         c.fillText(q.target.name || '', P[0], P[1] - (q.target.kind === 'cons' ? fontPx * 3.2 : fontPx * 1.4));
       } }
     }
     if (q.type === 'find' && q.st === 'open' && !QZ.found && QZ.findT > 0.05) { // ring around the reticle fills up
-      c.strokeStyle = 'rgba(127,224,160,0.95)'; c.lineWidth = 3;
+      c.strokeStyle = UI.ok; c.lineWidth = 3;
       c.beginPath(); c.arc(view.cx, view.cy, fontPx * 1.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, QZ.findT / QZ_FIND)); c.stroke();
     }
     // question and result, head-locked at the top of the eye
@@ -1572,12 +1661,12 @@
     c.font = Math.round(fontPx * 1.0) + 'px ' + LABEL_FONT;
     var lines = wrapLines(q.q, bw - fontPx * 1.4);
     var lh = fontPx * 1.25, bh = fontPx * 1.0 + lh * (lines.length + mlines.length) + (mlines.length ? fontPx * 0.4 : 0), by = view.cy - rad * 0.88;
-    c.fillStyle = 'rgba(14,15,20,0.93)'; roundRect(view.cx - bw / 2, by, bw, bh, fontPx * 0.6); c.fill();
-    c.strokeStyle = 'rgba(232,207,138,0.4)'; c.lineWidth = 1; c.stroke();
+    c.fillStyle = UI.panel; roundRect(view.cx - bw / 2, by, bw, bh, fontPx * 0.6); c.fill();
+    c.strokeStyle = UI.line; c.lineWidth = 1; c.stroke();
     c.textAlign = 'center'; c.textBaseline = 'top';
-    c.fillStyle = '#e8cf8a';
+    c.fillStyle = UI.ink;
     for (var j = 0; j < lines.length; j++) c.fillText(lines[j], view.cx, by + fontPx * 0.5 + j * lh);
-    c.font = Math.round(fontPx * 0.85) + 'px ' + BODY_FONT; c.fillStyle = 'rgba(241,242,245,0.92)';
+    c.font = Math.round(fontPx * 0.85) + 'px ' + BODY_FONT; c.fillStyle = UI.ink2;
     for (var k = 0; k < mlines.length; k++) c.fillText(mlines[k], view.cx, by + fontPx * 0.9 + (lines.length + k) * lh);
     c.restore();
   }
@@ -1718,13 +1807,13 @@
 
   var wsRetry = 1000, lastSentMode = null;
   function hiMode() { return NET.hostview ? 'host' : NET.sim ? 'sim' : st.mode; }
-  function sendHi() { if (NET.ws && NET.ws.readyState === 1) { try { NET.ws.send(JSON.stringify({ k: 'hi', m: hiMode(), v: INTRO.vidStatus })); lastSentMode = st.mode; } catch (e) {} } }
+  function sendHi() { if (NET.ws && NET.ws.readyState === 1) { try { NET.ws.send(JSON.stringify({ k: 'hi', m: hiMode(), v: INTRO.vidStatus, pid: NET.hostview || NET.sim ? '' : PID })); lastSentMode = st.mode; } catch (e) {} } }
   function connect() {
     var ws;
     try { ws = new WebSocket(SERVER + '/ws?room=' + NET.room); } catch (e) { NET.status = 'lost'; renderNetChip(); setTimeout(connect, 5000); return; }
     NET.ws = ws;
     ws.onopen = function () { NET.status = 'ok'; wsRetry = 1000; sendHi(); renderNetChip(); };
-    ws.onmessage = function (e) { if (e.data === 'pong') return; try { applyState(JSON.parse(e.data)); } catch (x) {} };
+    ws.onmessage = function (e) { if (e.data === 'pong') return; var m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.k === 'ansok' || m.k === 'myans') quizAck(m); else { applyState(m); if (m.k === 'state') quizFlush(); } };
     ws.onclose = function () { NET.status = 'lost'; renderNetChip(); setTimeout(connect, wsRetry + Math.random() * 500); wsRetry = Math.min(wsRetry * 2, 10000); };
     ws.onerror = function () { try { ws.close(); } catch (x) {} };
   }
@@ -1771,7 +1860,7 @@
   var last = performance.now(), lastInfoKey = '';
   function loop(now) {
     var dt = Math.min(0.1, (now - last) / 1000); last = now;
-    if (!artReady && window.SKY_ART) initArt();
+    if (!artReady) { if (window.SKY_ART) initArt(); else if (artWanted()) loadArtScript(); }
     introEval();
     var hidden = introCovers() && INTRO.alpha >= 0.999;
     if (!introCovers()) artPerf(dt);
@@ -1979,8 +2068,18 @@
     if (mode === 'screen') { st.yaw = C.enuToAltAz(st.cam.f).az; st.pitch = 30; setTimeout(function () { $('hint').hidden = true; }, 4000); }
     lastInfoKey = '__';
     resize();
-    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { st.lock = l; }).catch(function () {}); } catch (e) {}
+    requestWakeLock();
   }
+  // keep the screen on while looking at the sky; the browser drops the lock when the page is hidden, so ask again on return
+  var wakeAsking = false;
+  function requestWakeLock() {
+    if (!navigator.wakeLock || document.hidden || st.mode === 'menu' || wakeAsking) return;
+    if (st.lock && !st.lock.released) return;
+    wakeAsking = true;
+    navigator.wakeLock.request('screen').then(function (lock) { wakeAsking = false; if (st.mode === 'menu') { try { lock.release(); } catch (e) {} return; } st.lock = lock; })
+      .catch(function () { wakeAsking = false; });
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) requestWakeLock(); });
   function leave() {
     st.mode = 'menu'; try { $('guide').hidden = true; } catch (e) {}
     $('menu').hidden = false; $('hud').hidden = true; $('rotate').hidden = true;
@@ -2133,5 +2232,5 @@
     });
   }
   requestAnimationFrame(loop);
-  window.__sky = { skyKey: function () { return skyKey; }, intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, panel: PANEL, view: { toggle: toggleView, on: viewOn, free: freeView, mine: function () { return MINE; } }, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
+  window.__sky = { skyKey: function () { return skyKey; }, intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, panel: PANEL, art: function () { return { total: ART.length, decoded: ART.filter(function (it) { return !!it.img; }).length }; }, view: { toggle: toggleView, on: viewOn, free: freeView, mine: function () { return MINE; } }, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
 })();

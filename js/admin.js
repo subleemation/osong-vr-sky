@@ -30,7 +30,7 @@
   var SPOTS = [
     { id: 'sat', name: '토성', body: 'Saturn' },
     { id: 'pol', name: '북극성', v: starV('북극성') },
-    { id: 'peg', name: '가을의 대사각형', v: consV('Peg') },
+    { id: 'peg', name: '가을의 대사각형', v: C.radec2vec(354.6, 21.9) },   // the middle of the square, not of Pegasus' figure
     { id: 'cas', name: '카시오페이아자리', v: consV('Cas') },
     { id: 'and', name: '안드로메다은하', v: C.radec2vec(10.68, 41.27) },
     { id: 'per', name: '페르세우스자리', v: consV('Per') },
@@ -55,7 +55,7 @@
   function cmd(c, extra) { var o = { k: 'cmd', c: c }; if (extra) for (var k in extra) o[k] = extra[k]; send(o); }
   function setConn(t, ok) { $('hConn').textContent = t; $('hConn').className = ok ? 'ok' : 'bad'; }
   function connect() {
-    try { ws = new WebSocket(SERVER + '/ws?room=' + room); } catch (e) { setConn('연결 실패', false); setTimeout(connect, 4000); return; }
+    try { ws = new WebSocket(SERVER + '/ws?room=' + room + '&as=admin'); } catch (e) { setConn('연결 실패', false); setTimeout(connect, 4000); return; }
     var my = ws; authed = false;
     my.onopen = function () { setConn('서버 연결됨', true); retry = 1000; my.send(JSON.stringify({ k: 'auth', key: key })); };
     my.onmessage = function (e) {
@@ -117,13 +117,14 @@
     if (typeof introRender === 'function') introRender();
     if (!ST) return;
     var rem = timerRem();
-    $('hBig').textContent = (curStory() ? '이야기 ' + (ST.story.i + 1) + '장면' : phaseName(ST.phase)) + (ST.timer ? '  ' + (ST.timer.label ? ST.timer.label + ' ' : '') + fmtTime(rem) + (ST.timer.paused ? ' (멈춤)' : '') : '');
+    $('hBig').textContent = (curStory() ? '이야기 ' + (ST.story.i + 1) + '장면' + (ST.story.paused ? ' (멈춤)' : '') : phaseName(ST.phase)) + (ST.timer ? '  ' + (ST.timer.label ? ST.timer.label + ' ' : '') + fmtTime(rem) + (ST.timer.paused ? ' (멈춤)' : '') : '');
     var mins = curMinutes();
     $('hClock').textContent = clockText(mins);
     if (document.activeElement !== $('hTime')) $('hTime').value = Math.round(mins);
     var hostSky = C.skyOk(ST.sky) ? ST.sky : null;
     useSky(curStory() ? (ST.story.sky ? hostSky : null) : ST.pin ? (ST.pin === 'host' ? hostSky : null) : hostSky);
     renderSky();
+    renderQuizPick();
     var M = C.eqjToEnu(S, mins);
     document.querySelectorAll('#hSpots button[data-spot]').forEach(function (b) {
       var sp = SPOTS.filter(function (x) { return x.id === b.getAttribute('data-spot'); })[0]; if (!sp) return;
@@ -177,10 +178,48 @@
   (window.QUIZZES || []).forEach(function (q, i) {
     var o = document.createElement('option'); o.value = i; o.textContent = (q.type === 'find' ? '[찾기] ' : '[고르기] ') + q.q; $('qzSel').appendChild(o);
   });
-  function openQuiz(q) { cmd('quiz', { v: 'open', q: { type: q.type, q: q.q, opts: q.opts || [], ans: q.ans || 0, target: q.target || null, ex: q.ex || '' } }); }
+  // A find quiz is only sent when its target is above the horizon on the sky the phones show right now
+  // (the story's night and scene time during a story, otherwise the chosen evening, place and clock).
+  var AST_CEN = { GSq: C.radec2vec(354.6, 21.9) };   // 가을의 대사각형: middle of 알페라츠 · 셰아트 · 마르카브 · 알게니브
+  function quizTargetV(t, minutes) {
+    if (!t) return null;
+    if (t.kind === 'star') { var v = starV(t.id); if (v) return v; for (var i = 0; i < S.named.length; i++) if (S.named[i][1].split(' ')[0] === t.id) return starV(S.named[i][1]); return null; }
+    if (t.kind === 'cons') return consV(t.id);
+    if (t.kind === 'body') return S.planets[t.id] ? C.radec2vec.apply(null, C.bodyRaDec(S, t.id, minutes)) : null;
+    if (t.kind === 'radec') { var p = String(t.id).split(','); return p.length === 2 ? C.radec2vec(+p[0], +p[1]) : null; }
+    if (t.kind === 'ast') return AST_CEN[t.id] || null;
+    return null;
+  }
+  function skyMinutesNow() { // the clock the phones use: a story scene's own time, else the shared clock
+    var cs = curStory();
+    if (cs) { var sc = showBy(cs.show).scenes[cs.i], m = sc.view.minutes; (sc.fx || []).forEach(function (f) { if (f.type === 'timelapse') m = f.to; }); return m; }
+    return curMinutes();
+  }
+  function quizAlt(q) { // altitude in degrees (90 for questions that are not about a place in the sky)
+    if (!q || q.type !== 'find') return 90;
+    var m = skyMinutesNow(), v = quizTargetV(q.target, m);
+    return v ? C.enuToAltAz(C.apply(C.eqjToEnu(S, m), v)).alt : 90;
+  }
+  function renderQuizPick() {
+    var list = window.QUIZZES || [];
+    $('qzSel').querySelectorAll('option').forEach(function (o) {
+      var q = list[+o.value]; if (!q) return;
+      var low = quizAlt(q) < 0, base = (q.type === 'find' ? '[찾기] ' : '[고르기] ') + q.q;
+      o.textContent = low ? base + '  · 지금 지평선 아래' : base; o.disabled = low;
+    });
+    var cur = list[+$('qzSel').value];
+    if (cur && quizAlt(cur) < 0) { var first = list.findIndex(function (q) { return quizAlt(q) >= 0; }); if (first >= 0) $('qzSel').value = first; }
+  }
+  function quizWarn(t) { $('qzWarn').textContent = t || ''; }
+  function openQuiz(q) {
+    var alt = quizAlt(q);
+    if (alt < 0) { quizWarn('‘' + ((q.target && q.target.name) || '이 천체') + '’은(는) 지금 하늘에서 지평선 아래(높이 ' + Math.round(alt) + '°)라 낼 수 없어요. 시각이나 날짜를 바꾸거나 다른 퀴즈를 골라 주세요.'); return; }
+    quizWarn(curStory() ? '이야기는 퀴즈가 끝날 때까지 멈춰 있어요. ‘퀴즈 끝내기’를 누르면 이어서 진행돼요.' : '');
+    cmd('quiz', { v: 'open', q: { type: q.type, q: q.q, opts: q.opts || [], ans: q.ans || 0, target: q.target || null, ex: q.ex || '' } });
+  }
   $('qzOpen').addEventListener('click', function () { var q = (window.QUIZZES || [])[+$('qzSel').value]; if (q) openQuiz(q); });
   $('qzReveal').addEventListener('click', function () { cmd('quiz', { v: 'reveal' }); });
-  $('qzOff').addEventListener('click', function () { cmd('quiz', { v: 'off' }); });
+  $('qzOff').addEventListener('click', function () { cmd('quiz', { v: 'off' }); quizWarn(''); });
   $('qzMakeChoice').addEventListener('click', function () {
     var q = $('qzMQ').value.trim(), opts = [], ans = +(document.querySelector('[name=qzAns]:checked') || { value: 0 }).value, map = [];
     for (var i = 0; i < 4; i++) { var t = $('qzM' + i).value.trim(); if (t) { if (i === ans) ans = opts.length; map.push(i); opts.push(t); } }
@@ -196,7 +235,7 @@
     var q = ST && ST.quiz;
     $('qzLive').hidden = !q;
     if (!q) return;
-    var qc = counts && counts.quiz && counts.quiz.n === q.n ? counts.quiz : { answered: 0, tally: {} }, phones = (counts && counts.phones) || 0;
+    var qc = counts && counts.quiz && counts.quiz.n === q.n ? counts.quiz : { answered: 0, tally: {} }, phones = Math.max((counts && counts.phones) || 0, qc.answered);   // answers are kept even if a phone dropped out
     $('qzLiveQ').textContent = q.q + (q.st === 'reveal' ? '  · 정답 공개함' : '');
     var box = $('qzBars'); box.innerHTML = '';
     var rows = q.type === 'find' ? [['찾은 사람', qc.tally[1] || 0, true]] : q.opts.map(function (o, i) { return [(i + 1) + '. ' + o, qc.tally[i] || 0, i === q.ans]; });
@@ -207,7 +246,7 @@
       d.querySelector('i').style.width = (phones ? Math.round(100 * r[1] / phones) : 0) + '%';
       box.appendChild(d);
     });
-    $('qzCount').textContent = '답한 폰 ' + qc.answered + ' / ' + phones + '대' + (q.type === 'choice' ? ' · 초록 테두리가 정답' : '');
+    $('qzCount').textContent = '답한 사람 ' + qc.answered + ' / ' + phones + '명' + (q.type === 'choice' ? ' · 초록 테두리가 정답' : '') + (curStory() && ST.story.paused ? ' · 이야기는 멈춰 있어요' : '');
     $('qzReveal').disabled = q.st === 'reveal';
   }
   setInterval(renderQuiz, 1000);
@@ -487,7 +526,7 @@
   function storyState() {
     var cs = curStory(), bar = $('sProg'), box = bar.parentNode;
     if (!cs) { box.className = 'sprog done'; bar.style.width = '0'; return; }
-    var sc = showBy(cs.show).scenes[cs.i], total = Math.max(0.1, settleTime(sc)), p = Math.min(1, (Date.now() - storyT0) / 1000 / total);
+    var sc = showBy(cs.show).scenes[cs.i], total = Math.max(0.1, settleTime(sc)), el = cs.paused ? cs.el : Date.now() - storyT0, p = Math.min(1, el / 1000 / total);
     bar.style.width = (p * 100).toFixed(1) + '%'; box.className = p >= 1 ? 'sprog done' : 'sprog';
   }
   $('sShow').addEventListener('change', function () { renderStory(); });

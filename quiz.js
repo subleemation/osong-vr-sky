@@ -2,6 +2,7 @@
 //   type 'choice'  보기 중 하나 고르기   q 질문 · opts 보기 2~4개 · ans 정답 번호(0부터) · ex 정답 공개 때 설명
 //   type 'find'    하늘에서 찾아 바라보기   target { kind: 'star' | 'cons' | 'body' | 'radec', id, name }
 //                  star: 별 이름 · cons: 별자리 약자(Cas) · body: 행성 영어 이름(Saturn) · radec: '적경,적위'(도)
+//                  ast: 별 몇 개로 만든 모양(GSq = 가을의 대사각형) — 모양 안쪽을 바라보면 정답
 window.QUIZZES = [
   { id: 'polaris', type: 'find', q: '북극성을 찾아 2초 동안 바라보세요', target: { kind: 'star', id: '북극성', name: '북극성' },
     ex: '북쪽 하늘, 지평선에서 주먹 네 개(약 37°) 높이에 있어요. 오송의 위도와 거의 같은 높이예요.' },
@@ -9,7 +10,7 @@ window.QUIZZES = [
     ex: '북동쪽 높은 곳의 W(또는 M) 모양이에요. 북극성을 찾을 때 길잡이가 돼요.' },
   { id: 'saturn', type: 'find', q: '오늘의 주인공, 토성을 찾아보세요', target: { kind: 'body', id: 'Saturn', name: '토성' },
     ex: '남동쪽에서 깜빡이지 않고 차분하게 빛나는 노란 점이에요.' },
-  { id: 'square', type: 'find', q: '가을의 대사각형(페가수스자리)을 찾아보세요', target: { kind: 'cons', id: 'Peg', name: '페가수스자리' },
+  { id: 'square', type: 'find', q: '가을의 대사각형(페가수스자리)을 찾아보세요', target: { kind: 'ast', id: 'GSq', name: '가을의 대사각형' },
     ex: '머리 위 높은 곳에 밝은 별 네 개가 만드는 커다란 네모예요.' },
   { id: 'm31', type: 'find', q: '희뿌연 안드로메다은하를 찾아보세요', target: { kind: 'radec', id: '10.68,41.27', name: '안드로메다은하' },
     ex: '안드로메다자리 허리께에 있어요. 250만 광년 떨어진 이웃 은하예요.' },

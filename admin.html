@@ -9,7 +9,8 @@
 <meta name="theme-color" content="#292A2D">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/admin.css?v=6">
+<link rel="stylesheet" href="css/tokens.css?v=1">
+<link rel="stylesheet" href="css/admin.css?v=7">
 </head>
 <body>
 <!-- icons (stroke only, inherit the text colour) -->
@@ -140,6 +141,7 @@
             <select id="qzSel" class="sel grow" aria-label="준비된 퀴즈"></select>
             <button class="btn btn-primary" type="button" id="qzOpen">내기</button>
           </div>
+          <p class="istate dim" id="qzWarn" aria-live="polite"></p>
           <div class="qzlive" id="qzLive" hidden>
             <div class="qzq" id="qzLiveQ"></div>
             <div id="qzBars"></div>
@@ -360,13 +362,13 @@
   <div class="cctv-wall-body" id="cctvWallBody"></div>
 </div>
 <script src="vendor/qrcode.js?v=3"></script>
-<script src="js/sky-data.js?v=3"></script>
+<script src="js/sky-data.js?v=4"></script>
 <script src="vendor/astronomy.browser.min.js?v=2.1.19"></script>
 <script src="js/sky-core.js?v=3"></script>
 <script src="story.js?v=4"></script>
-<script src="quiz.js?v=1"></script>
-<script src="js/admin.js?v=9"></script>
-<script src="js/cctv.js?v=2"></script>
-<script src="js/admin-ui.js?v=1"></script>
+<script src="quiz.js?v=2"></script>
+<script src="js/admin.js?v=10"></script>
+<script src="js/cctv.js?v=3"></script>
+<script src="js/admin-ui.js?v=2"></script>
 </body>
 </html>

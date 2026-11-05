@@ -1,31 +1,7 @@
 /* Presenter console — "Quiet Observatory".
-   Calm dark grey, solid colours only (no gradients, glow, blur or translucency), one set of tokens for every component.
+   Calm dark grey, solid colours only (no gradients, glow, blur or translucency); tokens in css/tokens.css.
    The participant mirror on the right is the main visual; the left column holds operation and the other menus. */
-:root {
-  --bg-primary: #292A2D;     /* page */
-  --bg-panel: #37383C;       /* cards, buttons, inputs */
-  --bg-hover: #404145;       /* hover on panel elements */
-  --bg-selected: #515157;    /* selected / current */
-  --bg-observation: #11151B; /* sky screens */
-
-  --text-primary: #E8E4DD;
-  --text-secondary: #B7B5B0;
-  --text-disabled: #807F7B;
-
-  --border-default: #55565A;
-  --border-strong: #6B6B71;  /* border of selected elements */
-
-  --status-ok: #7FBF8E;      /* connected / running */
-  --status-warn: #D98C7A;    /* below the horizon, disconnected, destructive buttons */
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-
-  --font: "Pretendard Variable", "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif;
-  --head-h: 76px;
-  color-scheme: dark;
-}
+:root { --head-h: 76px; } /* colours, radii and font: css/tokens.css (shared with the participant page) */
 html, body { height: 100%; }
 body { background: var(--bg-primary); color: var(--text-primary); font-family: var(--font); font-size: 15px; line-height: 1.5; font-weight: 400; }
 button, input, select { font: inherit; color: inherit; }

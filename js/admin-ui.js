@@ -91,7 +91,11 @@
     var ST = state(), cs = A.curStory(), ok = A.authed() && !!ST;
     var pb = $('cPause'), lbl = pb.querySelector('.lbl'), ic = pb.querySelector('use');
     var note = '';
-    if (ok && ST.timer) {
+    if (ok && cs) {   // a story: the scene and its effects stand still on every phone
+      pb.disabled = false; lbl.textContent = cs.paused ? '재생' : '일시정지';
+      ic.setAttribute('href', cs.paused ? '#i-play' : '#i-pause'); pb.title = '이야기 장면과 효과를 멈추거나 이어가요';
+      if (cs.paused) note = ST.quiz ? '퀴즈가 열려 있어서 이야기가 멈춰 있어요. 퀴즈를 끝내면 이어져요.' : '이야기가 멈춰 있어요. 재생을 누르면 이어져요.';
+    } else if (ok && ST.timer) {
       pb.disabled = false; lbl.textContent = ST.timer.paused ? '재생' : '일시정지';
       ic.setAttribute('href', ST.timer.paused ? '#i-play' : '#i-pause'); pb.title = '진행 타이머를 멈추거나 이어가요';
     } else if (ok && !cs) {
@@ -99,7 +103,6 @@
       ic.setAttribute('href', ST.speed ? '#i-pause' : '#i-play'); pb.title = '하늘 시간 흐름을 멈추거나 이어가요';
     } else {
       pb.disabled = true; lbl.textContent = '일시정지'; ic.setAttribute('href', '#i-pause');
-      if (ok && cs) note = '이야기 장면은 정해진 연출이라 멈출 수 없어요. 타이머가 켜져 있으면 타이머를 멈출 수 있어요.';
     }
     if (ST && ST.speed) lastSpeed = ST.speed;
     var rb = $('cRestart');
@@ -117,8 +120,10 @@
   }
   $('cPause').addEventListener('click', function () {
     var ST = state(); if (!ST) return;
-    if (ST.timer) A.cmd('pause');
-    else if (!A.curStory()) A.cmd('speed', { v: ST.speed ? 0 : (lastSpeed || 1) });
+    var cs = A.curStory();
+    if (cs) A.cmd('storypause', { v: !cs.paused });
+    else if (ST.timer) A.cmd('pause');
+    else A.cmd('speed', { v: ST.speed ? 0 : (lastSpeed || 1) });
   });
   $('cRestart').addEventListener('click', function () {
     var cs = A.curStory(); if (!cs) return;
