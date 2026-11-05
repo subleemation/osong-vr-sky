@@ -71,7 +71,7 @@ export class Room {
       else if (a.role === 'watch' || a.mode === 'host' || a.mode === 'sim') continue; // the presenter's CCTV wall is not a participant // host's own sky view and preview pages are not participants
       else {
         phones++; if (a.mode === 'vr') vr++; if (a.vid === 'ready') film++; else if (a.vid === 'fail') filmFail++;
-        if (a.qa && a.qa.n === this.qn) { quiz.answered++; quiz.tally[a.qa.a] = (quiz.tally[a.qa.a] || 0) + 1; }
+        if (this.qn && a.qa && a.qa.n === this.qn) { quiz.answered++; quiz.tally[a.qa.a] = (quiz.tally[a.qa.a] || 0) + 1; }
       }
     }
     return { k: 'counts', phones, vr, admins, film, filmFail, quiz };
@@ -90,7 +90,7 @@ export class Room {
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ role: 'phone', mode: 'menu' });
     const s = await this.load();
-    this.qn = s.quiz ? s.quiz.n : 0;
+    this.qn = s.quiz && s.quiz.st === 'open' ? s.quiz.n : 0;
     server.send(this.pack(s));
     this.pushCounts();
     return new Response(null, { status: 101, webSocket: client });
@@ -164,7 +164,7 @@ export class Room {
     await this.save(s);
     await this.arm(s);
     this.broadcast(s);
-    if (m.c === 'quiz') this.pushCounts();
+    if (m.c === 'quiz' || m.c === 'reset' || m.c === 'stop') this.pushCounts();
   }
 
   setTimer(s, ms, label, src) {
@@ -192,7 +192,7 @@ export class Room {
         s.plan = { order: m.order === 'FG' ? 'FG' : 'GF', steps, i: 0 }; this.planEnter(s, 0); break;
       }
       case 'next': this.planNext(s); break;
-      case 'stop': s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; s.close = null; s.pin = null; break;
+      case 'stop': this.qn = 0; s.quiz = null; s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; s.close = null; s.pin = null; break;
       case 'intro': {
         // opening film: wait (everyone black) → play → (skip) ; phones run the timeline themselves from 'at'
         const cur = s.intro, n = ((cur && cur.n) || 0) + 1;
@@ -227,10 +227,11 @@ export class Room {
           const tg = q.target && typeof q.target === 'object' ? { kind: str(q.target.kind, 6), id: str(q.target.id, 24), name: str(q.target.name, 24) } : null;
           if (q.type === 'choice' && opts.length < 2) break;
           if (q.type === 'find' && !tg) break;
-          s.quiz = { n: ((s.quiz && s.quiz.n) || 0) + 1, st: 'open', at: now, type: q.type === 'find' ? 'find' : 'choice', q: str(q.q, 80), opts, ans: this.clip(q.ans, 0, 3, 0) | 0, target: tg, ex: str(q.ex, 140) };
+          s.quizSeq = (s.quizSeq || 0) + 1;
+          s.quiz = { n: s.quizSeq, st: 'open', at: now, type: q.type === 'find' ? 'find' : 'choice', q: str(q.q, 80), opts, ans: this.clip(q.ans, 0, 3, 0) | 0, target: tg, ex: str(q.ex, 140) };
           this.qn = s.quiz.n;
         } else if (m.v === 'reveal' && s.quiz) s.quiz.st = 'reveal';
-        else if (m.v === 'off') s.quiz = null;
+        else if (m.v === 'off') { s.quiz = null; this.qn = 0; }
         break;
       }
       case 'timer': if (!s.plan) { this.setTimer(s, this.clip(m.min, 0, 180, 0) * 60000, String(m.label || '').slice(0, 12), 'manual'); if (s.timer && s.phase === 'idle') s.phase = 'free'; } break;
@@ -257,7 +258,7 @@ export class Room {
       }
       case 'trail': { const h = Number(m.v); s.trail = [1, 2, 4, 6, 8, 12].includes(h) ? { h, at: now } : null; break; } // 일주운동 on (hours of trail) / off
       case 'own': s.own = !!m.v; break; // free viewing: may participants change what their own phone shows?
-      case 'reset': Object.assign(s, FRESH()); this.view = null; break;
+      case 'reset': { const quizSeq = s.quizSeq || 0; Object.assign(s, FRESH(), { quizSeq }); this.qn = 0; this.view = null; break; }
     }
   }
 
