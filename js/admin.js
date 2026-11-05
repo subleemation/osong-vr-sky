@@ -69,7 +69,7 @@
         my.onclose = null; my.close();
       }
       else if (m.k === 'state') { ST = m; stAt = Date.now(); storyT0 = m.story ? Date.now() - (m.story.el || 0) : 0; if (Date.now() - followAt > 3000) { follow = !!(m.view && m.view.on); renderFollow(); } render(); }
-      else if (m.k === 'counts') { counts = m; renderQuiz(); $('hPeers').textContent = m.phones + '대 접속 (VR 중 ' + m.vr + '대)'; }
+      else if (m.k === 'counts') { counts = m; renderQuiz(); $('hPeers').textContent = m.phones + '대 접속 (VR 중 ' + m.vr + '대)'; if ($('dVr')) { $('dVr').textContent = m.vr; $('dAll').textContent = m.phones; } }
     };
     my.onclose = function () { authed = false; setConn('연결이 끊겼어요. 다시 연결 중…', false); setTimeout(connect, retry); retry = Math.min(retry * 2, 8000); };
     my.onerror = function () { try { my.close(); } catch (x) {} };
@@ -431,6 +431,7 @@
   }
   $('sSkyEvent').addEventListener('click', function () { setStoryHost(false); });
   $('sSkyHost').addEventListener('click', function () { setStoryHost(true); });
+  function goLabel(t) { var l = $('sGo').querySelector('.lbl'); (l || $('sGo')).textContent = t; }
   function renderStory() {
     var cs = curStory(), show = cs ? showBy(cs.show) : showBy($('sShow').value);
     if (!show) return;
@@ -447,12 +448,12 @@
       show.scenes.forEach(function (sc, j) {
         var li = document.createElement('li'), b = document.createElement('button');
         b.type = 'button'; b.innerHTML = '<span class="n"></span><span class="t"></span>';
-        b.querySelector('.n').textContent = (j < 9 ? '0' : '') + (j + 1); b.querySelector('.t').textContent = sc.title;
+        b.querySelector('.n').textContent = (j + 1) + '단계'; b.querySelector('.t').textContent = sc.title;
         b.addEventListener('click', function () { storyCmd(show.id, j); });
         li.appendChild(b); list.appendChild(li);
       });
     }
-    list.querySelectorAll('button').forEach(function (b, j) { if (j === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+    list.querySelectorAll('button').forEach(function (b, j) { if (j === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('done', i >= 0 && j < i); });
     renderStorySky();
     var alts = belowList(show), shown = cs ? i : 0, warnN = 0;
     list.querySelectorAll('button').forEach(function (b, j) { var low = alts[j] < 0; b.classList.toggle('below', low); if (low) warnN++; b.title = low ? '이 날짜에는 이 장면의 대상이 지평선 아래예요' : ''; });
@@ -463,12 +464,12 @@
       var sc = show.scenes[i];
       $('sTitle').textContent = (i + 1) + '. ' + (sc.title || '');
       $('sCue').textContent = sc.cue || ''; $('sNote').textContent = sc.note || '';
-      $('sGo').textContent = i + 1 < n ? '다음 장면' : '마지막 장면'; $('sGo').disabled = i + 1 >= n;
+      goLabel(i + 1 < n ? '다음 단계' : '마지막 단계'); $('sGo').disabled = i + 1 >= n;
       $('sPrev').disabled = i <= 0; $('sEnd').disabled = false;
     } else {
       $('sTitle').textContent = '1. ' + (show.scenes[0].title || '');
       $('sCue').textContent = show.scenes[0].cue || ''; $('sNote').textContent = show.scenes[0].note || '';
-      $('sGo').textContent = '시작'; $('sGo').disabled = false; $('sPrev').disabled = true; $('sEnd').disabled = true;
+      goLabel('이야기 시작'); $('sGo').disabled = false; $('sPrev').disabled = true; $('sEnd').disabled = true;
     }
   }
   function storyState() {
@@ -559,5 +560,7 @@
   drawQR();
   try { key = sessionStorage.getItem('osong-key') || ''; } catch (e) {}
   connect();
-  window.__admin = { send: send, room: function () { return room; }, server: function () { return SERVER; }, state: function () { return ST; } };
+  window.__admin = { send: send, cmd: cmd, storyCmd: storyCmd, showBy: showBy, curStory: curStory, timerRem: timerRem, fmtTime: fmtTime, clockText: clockText,
+    authed: function () { return authed; }, counts: function () { return counts; },
+    room: function () { return room; }, server: function () { return SERVER; }, state: function () { return ST; } };
 })();

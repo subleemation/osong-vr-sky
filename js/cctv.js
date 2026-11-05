@@ -40,8 +40,9 @@
     t.el.querySelector('em').textContent = m.s || '';
     t.el.classList.remove('stale');
     render();
+    window.dispatchEvent(new CustomEvent('cctv:frame', { detail: { id: m.id, n: t.n, img: m.img, m: m.m, d: m.d, s: m.s } }));   // js/admin-ui.js mirrors one screen large
   }
-  function drop(id) { var t = tiles[id]; if (t) { t.el.remove(); delete tiles[id]; render(); } }
+  function drop(id) { var t = tiles[id]; if (t) { t.el.remove(); delete tiles[id]; render(); window.dispatchEvent(new CustomEvent('cctv:gone', { detail: { id: id } })); } }
   function render() {
     var n = Object.keys(tiles).length;
     $('cctvCount').textContent = n + '대';
@@ -61,12 +62,13 @@
   // big wall: the same grid moves into a full-screen layer
   function wall(on) {
     $('cctvWall').hidden = !on;
-    (on ? $('cctvWallBody') : $('cctvHome')).appendChild($('cctvGrid'));
+    (on ? $('cctvWallBody') : (window.__cctvHomeOverride && window.__cctvHomeOverride()) || $('cctvHome')).appendChild($('cctvGrid'));
     $('cctvGrid').classList.toggle('big', on);
   }
   $('cctvBig').addEventListener('click', function () { wall(true); });
   $('cctvClose').addEventListener('click', function () { wall(false); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cctvWall').hidden) wall(false); });
+  window.__cctv = { wall: wall, home: function () { return $('cctvHome'); } };
 
   render();
   connect();
