@@ -1,6 +1,6 @@
 // Presenter's "CCTV" wall: small live snapshots of every participant's screen (sent by js/app.js every 1.5 s).
-// It opens its own connection to the room as a 'watch' socket; the first presenter page to watch a room gets a key
-// (kept in this browser), so other pages can't watch the same room. Snapshots are only the sky drawing.
+// It opens its own connection to the room as a 'watch' socket once the presenter has logged in, and proves itself with
+// the same presenter password (the server never sends phone screens to anyone else). Snapshots are only the sky drawing.
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
@@ -9,16 +9,13 @@
   var MODE = { vr: 'VR', screen: '화면', menu: '메뉴' };
   var ws = null, retry = 1000, tiles = {}, order = 0, denied = false;
 
-  function authenticateWatcher() {
-    if (!ws || ws.readyState !== 1 || !A.authed()) return;
-    var k = ''; try { k = sessionStorage.getItem('osong-key') || ''; } catch (e) {}
-    if (k) ws.send(JSON.stringify({ k: 'watch', key: k }));
-  }
-  window.addEventListener('focus', authenticateWatcher);
-  setInterval(authenticateWatcher, 2500);
+  function key() { var k = ''; try { k = sessionStorage.getItem('osong-key') || ''; } catch (e) {} return k; }
+  var started = false;
+  // connect only after the presenter logged in on this page (so the socket never sits in the room as a "phone")
+  setInterval(function () { if (!started && A.authed() && key()) { started = true; connect(); } }, 500);
   function connect() {
-    var my; try { my = ws = new WebSocket(URL_ + '/ws?room=' + room); } catch (e) { setTimeout(connect, 5000); return; }
-    my.onopen = function () { retry = 1000; authenticateWatcher(); };
+    var my; try { my = ws = new WebSocket(URL_ + '/ws?room=' + room + '&as=watch'); } catch (e) { setTimeout(connect, 5000); return; }
+    my.onopen = function () { retry = 1000; try { my.send(JSON.stringify({ k: 'watch', key: key() })); } catch (e) {} };
     my.onmessage = function (e) {
       if (my !== ws || e.data === 'pong') return;
       var m; try { m = JSON.parse(e.data); } catch (x) { return; }
@@ -77,5 +74,4 @@
   window.__cctv = { wall: wall, home: function () { return $('cctvHome'); } };
 
   render();
-  connect();
 })();

@@ -22,6 +22,8 @@ function safeEq(a, b) {
   return d === 0;
 }
 
+const pidOf = (x) => (typeof x === 'string' && /^[a-z0-9]{6,24}$/i.test(x) ? x : ''); // a phone's participant id (kept in its browser)
+
 const FRESH = () => ({ phase: 'idle', time: 90, timeAt: Date.now(), speed: 0, spot: null, note: '', hold: false, timer: null, plan: null, close: null, pin: null, trail: null });
 
 export class Room {
@@ -46,7 +48,7 @@ export class Room {
       plan: s.plan ? { order: s.plan.order, i: s.plan.i, n: s.plan.steps.length, label: s.plan.steps[s.plan.i].l } : null,
       view: this.view || s.view || null,
       art: typeof s.art === 'boolean' ? s.art : null,
-      story: s.story ? { show: s.story.show, i: s.story.i, el: Date.now() - s.story.at, sky: !!s.story.sky } : null, // sky: on the presenter's night instead of the event night
+      story: s.story ? { show: s.story.show, i: s.story.i, el: this.storyEl(s.story), sky: !!s.story.sky, paused: !!s.story.paused } : null, // sky: on the presenter's night instead of the event night; paused: scene and effects stand still
       sky: s.sky || null,
       disp: s.disp ? Object.fromEntries(Object.entries(s.disp).filter(([k]) => k !== 'trails')) : null, // old rooms may still hold a saved 'trails'
       own: s.own !== false,
@@ -58,41 +60,50 @@ export class Room {
     };
     return JSON.stringify(out);
   }
+  storyEl(st) { return st.paused ? st.paused.el : Date.now() - st.at; }
+  storyPause(s, on, why) { // stop / resume the scene clock; 'why' remembers a pause made by a quiz so closing the quiz resumes it
+    const st = s.story; if (!st) return;
+    if (on && !st.paused) st.paused = { el: Date.now() - st.at, why: why || 'host' };
+    else if (!on && st.paused) { st.at = Date.now() - st.paused.el; st.paused = null; }
+  }
   broadcast(s) {
     const msg = this.pack(s);
     for (const ws of this.ctx.getWebSockets()) { try { ws.send(msg); } catch (e) {} }
   }
-  counts() {
+  // Quiz answers live in storage (s.ans), keyed by each phone's participant id, so they survive a dropped connection,
+  // a reload of the phone, and the Durable Object going to sleep. Only answers to the current quiz number count.
+  counts(s) {
     let phones = 0, vr = 0, admins = 0, film = 0, filmFail = 0;
-    const quiz = { n: this.qn || 0, answered: 0, tally: {} }; // answers to the open quiz
+    const qn = s && s.quiz ? s.quiz.n : 0, quiz = { n: qn, answered: 0, tally: {} };
+    if (qn && s.ans && s.ans.n === qn) for (const pid in s.ans.a) { const a = s.ans.a[pid]; quiz.answered++; quiz.tally[a] = (quiz.tally[a] || 0) + 1; }
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() || {};
       if (a.role === 'admin') admins++;
-      else if (a.role === 'watch' || a.mode === 'host' || a.mode === 'sim') continue; // the presenter's CCTV wall is not a participant // host's own sky view and preview pages are not participants
+      else if (a.role === 'watch' || a.role === 'pre' || a.mode === 'host' || a.mode === 'sim') continue; // the presenter's CCTV wall is not a participant // host's own sky view and preview pages are not participants
       else {
         phones++; if (a.mode === 'vr') vr++; if (a.vid === 'ready') film++; else if (a.vid === 'fail') filmFail++;
-        if (this.qn && a.qa && a.qa.n === this.qn) { quiz.answered++; quiz.tally[a.qa.a] = (quiz.tally[a.qa.a] || 0) + 1; }
       }
     }
     return { k: 'counts', phones, vr, admins, film, filmFail, quiz };
   }
-  pushCounts() {
-    const c = JSON.stringify(this.counts());
+  async pushCounts(s) {
+    const c = JSON.stringify(this.counts(s || await this.load()));
     for (const ws of this.ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() || {};
       if (a.role === 'admin') { try { ws.send(c); } catch (e) {} }
     }
   }
 
-  async fetch() {
+  async fetch(req) {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ role: 'phone', mode: 'menu' });
+    // the presenter page and its screen wall say so up front, so they are never counted as phones while logging in
+    const as = req ? new URL(req.url).searchParams.get('as') : null, pre = as === 'watch' || as === 'admin'; // presenter pages: not a phone even before the password
+    server.serializeAttachment({ role: pre ? 'pre' : 'phone', mode: 'menu' });
     const s = await this.load();
-    this.qn = s.quiz && s.quiz.st === 'open' ? s.quiz.n : 0;
     server.send(this.pack(s));
-    this.pushCounts();
+    await this.pushCounts(s);
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -120,23 +131,34 @@ export class Room {
       for (const w of this.ctx.getWebSockets()) { const a = w.deserializeAttachment() || {}; if (a.role === 'watch') { try { w.send(out); } catch (e) {} } }
       return;
     }
-    if (m.k === 'ans') { // a phone's quiz answer: option index, or 1 for "found it"
+    if (m.k === 'ans') { // a phone's quiz answer: option index, or 1 for "found it" (resent after a reconnect until acknowledged)
       const s = await this.load();
-      if (att.role !== 'phone' || !s.quiz || s.quiz.st !== 'open' || m.n !== s.quiz.n) return;
-      att.qa = { n: s.quiz.n, a: this.clip(m.a, 0, 3, 0) | 0 }; ws.serializeAttachment(att);
-      this.qn = s.quiz.n; this.pushCounts(); return;
+      const pid = att.pid || pidOf(m.pid);
+      if (att.role !== 'phone' || !pid || !s.quiz || m.n !== s.quiz.n) return;
+      const a = this.clip(m.a, 0, 3, 0) | 0;
+      if (s.quiz.st === 'open') {
+        if (!s.ans || s.ans.n !== s.quiz.n) s.ans = { n: s.quiz.n, a: {} };
+        if (Object.keys(s.ans.a).length < 500 || pid in s.ans.a) { s.ans.a[pid] = a; await this.save(s); }
+      }
+      const kept = s.ans && s.ans.n === s.quiz.n && pid in s.ans.a ? s.ans.a[pid] : null; // after the reveal a late answer is not counted
+      ws.send(JSON.stringify({ k: 'ansok', n: s.quiz.n, a: kept }));
+      await this.pushCounts(s); return;
     }
     if (m.k === 'hi') {
       att.mode = ['vr', 'screen', 'host', 'sim'].includes(m.m) ? m.m : 'menu';
       att.vid = ['ready', 'load', 'fail', 'none'].includes(m.v) ? m.v : 'none';
-      ws.serializeAttachment(att); this.pushCounts(); return;
+      if (pidOf(m.pid)) att.pid = pidOf(m.pid);
+      ws.serializeAttachment(att);
+      const s = await this.load();
+      if (att.pid && s.quiz && s.ans && s.ans.n === s.quiz.n && att.pid in s.ans.a) ws.send(JSON.stringify({ k: 'myans', n: s.quiz.n, a: s.ans.a[att.pid] })); // restore after a reconnect
+      await this.pushCounts(s); return;
     }
     if (m.k === 'auth') {
       if (this.env.ADMIN_KEY && safeEq(String(m.key || ''), String(this.env.ADMIN_KEY))) {
         att.role = 'admin'; ws.serializeAttachment(att);
         ws.send(JSON.stringify({ k: 'authok' }));
         const s = await this.load();
-        ws.send(this.pack(s)); ws.send(JSON.stringify(this.counts())); this.pushCounts();
+        ws.send(this.pack(s)); await this.pushCounts(s);
       } else {
         ws.send(JSON.stringify({ k: 'authfail', configured: !!this.env.ADMIN_KEY }));
       }
@@ -162,7 +184,7 @@ export class Room {
     await this.save(s);
     await this.arm(s);
     this.broadcast(s);
-    if (m.c === 'quiz' || m.c === 'reset' || m.c === 'stop') this.pushCounts();
+    await this.pushCounts(s);
   }
 
   setTimer(s, ms, label, src) {
@@ -190,7 +212,7 @@ export class Room {
         s.plan = { order: m.order === 'FG' ? 'FG' : 'GF', steps, i: 0 }; this.planEnter(s, 0); break;
       }
       case 'next': this.planNext(s); break;
-      case 'stop': this.qn = 0; s.quiz = null; s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; s.close = null; s.pin = null; break;
+      case 'stop': s.quiz = null; s.ans = null; s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.intro = null; s.close = null; s.pin = null; break;
       case 'intro': {
         // opening film: wait (everyone black) → play → (skip) ; phones run the timeline themselves from 'at'
         const cur = s.intro, n = ((cur && cur.n) || 0) + 1;
@@ -200,7 +222,7 @@ export class Room {
         } else if (m.v === 'skip') {
           if (cur && cur.st === 'play' && now - cur.at < 70000) s.intro = { st: 'skip', n: cur.n, at: now, pat: cur.pat, len: cur.len };
         } else if (m.v === 'wait') {
-          s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.close = null; s.pin = null;
+          s.plan = null; s.phase = 'idle'; s.timer = null; s.spot = null; s.hold = false; s.note = ''; s.view = null; this.view = null; s.art = null; s.story = null; s.close = null; s.pin = null; s.quiz = null; s.ans = null;
           s.intro = { st: 'wait', n, at: now, pat: now };
         } else if (m.v === 'off') s.intro = null;
         break;
@@ -225,25 +247,31 @@ export class Room {
           const tg = q.target && typeof q.target === 'object' ? { kind: str(q.target.kind, 6), id: str(q.target.id, 24), name: str(q.target.name, 24) } : null;
           if (q.type === 'choice' && opts.length < 2) break;
           if (q.type === 'find' && !tg) break;
-          s.quizSeq = (s.quizSeq || 0) + 1;
+          // quiz numbers never repeat in a room (not even after 'reset'), so an answer to an old quiz can never count for a new one
+          s.quizSeq = Math.max(s.quizSeq || 0, (s.quiz && s.quiz.n) || 0, (s.ans && s.ans.n) || 0) + 1;
           s.quiz = { n: s.quizSeq, st: 'open', at: now, type: q.type === 'find' ? 'find' : 'choice', q: str(q.q, 80), opts, ans: this.clip(q.ans, 0, 3, 0) | 0, target: tg, ex: str(q.ex, 140) };
-          this.qn = s.quiz.n;
+          s.ans = { n: s.quiz.n, a: {} };
+          this.storyPause(s, true, 'quiz'); // a story under a quiz stands still until the quiz closes
         } else if (m.v === 'reveal' && s.quiz) s.quiz.st = 'reveal';
-        else if (m.v === 'off') { s.quiz = null; this.qn = 0; }
+        else if (m.v === 'off') { s.quiz = null; s.ans = null; if (s.story && s.story.paused && s.story.paused.why === 'quiz') this.storyPause(s, false); }
         break;
       }
       case 'timer': if (!s.plan) { this.setTimer(s, this.clip(m.min, 0, 180, 0) * 60000, String(m.label || '').slice(0, 12), 'manual'); if (s.timer && s.phase === 'idle') s.phase = 'free'; } break;
       case 'note': s.note = String(m.v || '').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'hold': s.hold = !!m.v; if (s.hold) s.note = String(m.note || '헤드셋을 벗고 앞을 봐 주세요').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'art': s.art = typeof m.v === 'boolean' ? m.v : null; break;
-      case 'story': s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now, sky: !!m.sky } : null; if (s.story) { s.hold = false; s.close = null; s.pin = null; s.trail = null; } break;
+      case 'story': // a new scene (or the end of the story) closes an open quiz, so the two never fight over the screen
+        s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now, sky: !!m.sky, paused: null } : null;
+        if (s.story) { s.hold = false; s.close = null; s.pin = null; s.trail = null; }
+        s.quiz = null; s.ans = null; break;
+      case 'storypause': this.storyPause(s, typeof m.v === 'boolean' ? m.v : !(s.story && s.story.paused), 'host'); break;
       case 'closing': { // the last free look: a countdown on every phone, then black with "take the headset off"
         if (m.v === 'run') {
           if (Number.isFinite(Number(m.time))) { s.time = this.clip(m.time, 0, 720, 90); s.timeAt = now; s.speed = 0; } // keep the story's sky
           if (s.story) s.pin = s.story.sky ? 'host' : 'event';
-          s.story = null; s.plan = null; s.view = null; this.view = null; s.spot = null; s.hold = false; s.note = ''; s.quiz = null; s.close = null;
+          s.story = null; s.plan = null; s.view = null; this.view = null; s.spot = null; s.hold = false; s.note = ''; s.quiz = null; s.ans = null; s.close = null;
           s.phase = 'free'; this.setTimer(s, this.clip(m.min, 0.25, 30, 3) * 60000, '남은 시간', 'closing');
-        } else if (m.v === 'done') { if (s.timer && s.timer.src === 'closing') s.timer = null; s.quiz = null; s.close = { at: now }; }
+        } else if (m.v === 'done') { if (s.timer && s.timer.src === 'closing') s.timer = null; s.quiz = null; s.ans = null; s.close = { at: now }; }
         else if (m.v === 'off') { s.close = null; s.pin = null; if (s.timer && s.timer.src === 'closing') s.timer = null; }
         break;
       }
@@ -256,7 +284,7 @@ export class Room {
       }
       case 'trail': { const h = Number(m.v); s.trail = [1, 2, 4, 6, 8, 12].includes(h) ? { h, at: now } : null; break; } // 일주운동 on (hours of trail) / off
       case 'own': s.own = !!m.v; break; // free viewing: may participants change what their own phone shows?
-      case 'reset': { const quizSeq = s.quizSeq || 0; Object.assign(s, FRESH(), { quizSeq }); this.qn = 0; this.view = null; break; }
+      case 'reset': { const quizSeq = Math.max(s.quizSeq || 0, (s.quiz && s.quiz.n) || 0); Object.assign(s, FRESH(), { quizSeq, quiz: null, ans: null }); this.view = null; break; }
     }
   }
 
@@ -278,7 +306,7 @@ export class Room {
   async webSocketClose(ws) {
     const a = ws.deserializeAttachment() || {};
     if (a.cid) { const gone = JSON.stringify({ k: 'camgone', id: a.cid }); for (const w of this.ctx.getWebSockets()) { if (w === ws) continue; const b = w.deserializeAttachment() || {}; if (b.role === 'watch') { try { w.send(gone); } catch (e) {} } } }
-    try { ws.close(); } catch (e) {} this.pushCounts();
+    try { ws.close(); } catch (e) {} await this.pushCounts();
   }
-  async webSocketError() { this.pushCounts(); }
+  async webSocketError() { await this.pushCounts(); }
 }
