@@ -201,6 +201,19 @@
         </section>
 
         <section class="blk">
+          <h2>일주운동</h2>
+          <p class="hnote" style="margin:0 0 4px">지구가 도는 동안 별이 북극성을 중심으로 그린 궤적을 모든 폰에 보여줘요. 켜면 몇 초에 걸쳐 궤적이 자라나요.</p>
+          <div class="seg" role="group" aria-label="일주운동 궤적 길이">
+            <button class="btn" type="button" data-trail="2" aria-pressed="false">2시간</button>
+            <button class="btn" type="button" data-trail="4" aria-pressed="false">4시간</button>
+            <button class="btn" type="button" data-trail="8" aria-pressed="false">8시간</button>
+            <button class="btn" type="button" data-trail="12" aria-pressed="false">12시간</button>
+            <button class="btn" type="button" data-trail="0" aria-pressed="true">끄기</button>
+          </div>
+          <p class="istate dim" id="hTrailState"></p>
+        </section>
+
+        <section class="blk">
           <h2>화면에 보이는 것</h2>
           <div class="bar"><button class="btn sw" id="hArt" type="button" aria-pressed="true">별자리 그림 (빠른 켬·끔)</button></div>
           <div class="hdisp" id="hDisp"></div>
@@ -349,7 +362,7 @@
 <script src="js/sky-core.js?v=3"></script>
 <script src="story.js?v=4"></script>
 <script src="quiz.js?v=1"></script>
-<script src="js/admin.js?v=7"></script>
+<script src="js/admin.js?v=8"></script>
 <script src="js/cctv.js?v=2"></script>
 <script src="js/admin-ui.js?v=1"></script>
 </body>

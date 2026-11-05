@@ -22,7 +22,7 @@ function safeEq(a, b) {
   return d === 0;
 }
 
-const FRESH = () => ({ phase: 'idle', time: 90, timeAt: Date.now(), speed: 0, spot: null, note: '', hold: false, timer: null, plan: null, close: null, pin: null });
+const FRESH = () => ({ phase: 'idle', time: 90, timeAt: Date.now(), speed: 0, spot: null, note: '', hold: false, timer: null, plan: null, close: null, pin: null, trail: null });
 
 export class Room {
   constructor(ctx, env) {
@@ -48,7 +48,8 @@ export class Room {
       art: typeof s.art === 'boolean' ? s.art : null,
       story: s.story ? { show: s.story.show, i: s.story.i, el: Date.now() - s.story.at, sky: !!s.story.sky } : null, // sky: on the presenter's night instead of the event night
       sky: s.sky || null,
-      disp: s.disp || null,
+      disp: s.disp ? Object.fromEntries(Object.entries(s.disp).filter(([k]) => k !== 'trails')) : null, // old rooms may still hold a saved 'trails'
+      trail: s.trail ? { h: s.trail.h, el: Date.now() - s.trail.at } : null, // 일주운동: presenter turned the star trails on
       quiz: s.quiz || null,
       intro: s.intro ? { st: s.intro.st, n: s.intro.n, len: s.intro.len, el: Date.now() - s.intro.at, pel: Date.now() - (s.intro.pat || s.intro.at) } : null,
       close: s.close ? { el: Date.now() - s.close.at } : null,
@@ -212,7 +213,7 @@ export class Room {
       case 'step': s.time = ((this.minutes(s) + this.clip(m.v, -720, 720, 0)) % 720 + 720) % 720; s.timeAt = now; break; // jump forward / back
       case 'speed': s.time = this.minutes(s); s.timeAt = now; s.speed = [-600, -60, -10, 0, 1, 10, 60, 600].includes(Number(m.v)) ? Number(m.v) : 0; break;
       case 'show': { // what every phone draws: true / false, or null to leave it to each phone
-        const keys = ['lines', 'names', 'stars', 'art', 'trails', 'mw', 'dirs'];
+        const keys = ['lines', 'names', 'stars', 'art', 'mw', 'dirs'];   // star trails: the 'trail' command below
         if (!keys.includes(m.key)) break;
         s.disp = Object.assign({}, s.disp); s.disp[m.key] = typeof m.v === 'boolean' ? m.v : undefined;
         if (m.key === 'art') s.art = typeof m.v === 'boolean' ? m.v : null;
@@ -235,7 +236,7 @@ export class Room {
       case 'note': s.note = String(m.v || '').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'hold': s.hold = !!m.v; if (s.hold) s.note = String(m.note || '헤드셋을 벗고 앞을 봐 주세요').slice(0, 40); if (s.phase === 'idle') s.phase = 'free'; break;
       case 'art': s.art = typeof m.v === 'boolean' ? m.v : null; break;
-      case 'story': s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now, sky: !!m.sky } : null; if (s.story) { s.hold = false; s.close = null; s.pin = null; } break;
+      case 'story': s.story = typeof m.show === 'string' && m.show ? { show: m.show.slice(0, 24), i: this.clip(m.i, 0, 99, 0) | 0, at: now, sky: !!m.sky } : null; if (s.story) { s.hold = false; s.close = null; s.pin = null; s.trail = null; } break;
       case 'closing': { // the last free look: a countdown on every phone, then black with "take the headset off"
         if (m.v === 'run') {
           if (Number.isFinite(Number(m.time))) { s.time = this.clip(m.time, 0, 720, 90); s.timeAt = now; s.speed = 0; } // keep the story's sky
@@ -253,6 +254,7 @@ export class Room {
           ? { date: d, lat, lon, tz, place: String(m.place || '').slice(0, 12), name: String(m.name || '').slice(0, 16) } : null;
         break;
       }
+      case 'trail': { const h = Number(m.v); s.trail = [1, 2, 4, 6, 8, 12].includes(h) ? { h, at: now } : null; break; } // 일주운동 on (hours of trail) / off
       case 'reset': Object.assign(s, FRESH()); this.view = null; break;
     }
   }
