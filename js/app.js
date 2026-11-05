@@ -2227,5 +2227,5 @@
     });
   }
   requestAnimationFrame(loop);
-  window.__sky = { skyKey: function () { return skyKey; }, intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, panel: PANEL, view: { toggle: toggleView, on: viewOn, free: freeView, mine: function () { return MINE; } }, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
+  window.__sky = { skyKey: function () { return skyKey; }, intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, panel: PANEL, art: function () { return { total: ART.length, decoded: ART.filter(function (it) { return !!it.img; }).length }; }, view: { toggle: toggleView, on: viewOn, free: freeView, mine: function () { return MINE; } }, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
 })();

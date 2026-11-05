@@ -1,0 +1,14 @@
+{
+  "name": "vr-planetarium",
+  "private": true,
+  "type": "module",
+  "description": "별이 빛나는 밤에 VR — static site (GitHub Pages) + sync server (Cloudflare Worker, worker.js)",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "node tests/e2e/run.mjs",
+    "mock": "node tests/e2e/mock-server.mjs"
+  },
+  "devDependencies": {
+    "ws": "^8.18.0"
+  }
+}
