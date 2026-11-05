@@ -49,6 +49,7 @@ export class Room {
       story: s.story ? { show: s.story.show, i: s.story.i, el: Date.now() - s.story.at, sky: !!s.story.sky } : null, // sky: on the presenter's night instead of the event night
       sky: s.sky || null,
       disp: s.disp ? Object.fromEntries(Object.entries(s.disp).filter(([k]) => k !== 'trails')) : null, // old rooms may still hold a saved 'trails'
+      own: s.own !== false,
       trail: s.trail ? { h: s.trail.h, el: Date.now() - s.trail.at } : null, // 일주운동: presenter turned the star trails on
       quiz: s.quiz || null,
       intro: s.intro ? { st: s.intro.st, n: s.intro.n, len: s.intro.len, el: Date.now() - s.intro.at, pel: Date.now() - (s.intro.pat || s.intro.at) } : null,
@@ -255,6 +256,7 @@ export class Room {
         break;
       }
       case 'trail': { const h = Number(m.v); s.trail = [1, 2, 4, 6, 8, 12].includes(h) ? { h, at: now } : null; break; } // 일주운동 on (hours of trail) / off
+      case 'own': s.own = !!m.v; break; // free viewing: may participants change what their own phone shows?
       case 'reset': Object.assign(s, FRESH()); this.view = null; break;
     }
   }
