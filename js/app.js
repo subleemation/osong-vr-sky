@@ -1552,6 +1552,7 @@
   }
   function quizTargetAlt(t) { var v = quizTargetVec(t); return v ? altOf(v) : 90; }
   function quizSend(a) {
+    if (NET.hostview || NET.sim) return;   // the presenter's own sky view and previews are not participants
     QZ.pend = { n: QZ.n, a: a }; try { sessionStorage.setItem(pendKey(), JSON.stringify(QZ.pend)); } catch (e) {}
     quizFlush();
   }

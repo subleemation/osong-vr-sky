@@ -134,7 +134,7 @@ export class Room {
     if (m.k === 'ans') { // a phone's quiz answer: option index, or 1 for "found it" (resent after a reconnect until acknowledged)
       const s = await this.load();
       const pid = att.pid || pidOf(m.pid);
-      if (att.role !== 'phone' || !pid || !s.quiz || m.n !== s.quiz.n) return;
+      if (att.role !== 'phone' || att.mode === 'host' || att.mode === 'sim' || !pid || !s.quiz || m.n !== s.quiz.n) return; // the presenter's own sky view and previews never answer
       const a = this.clip(m.a, 0, 3, 0) | 0;
       if (s.quiz.st === 'open') {
         if (!s.ans || s.ans.n !== s.quiz.n) s.ans = { n: s.quiz.n, a: {} };

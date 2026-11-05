@@ -74,11 +74,12 @@ test('the tally stays visible during the reveal, even when a phone joins then', 
   assert.equal(late.last('ansok').a, null);
 });
 
-test('answers without a participant id or from presenter sockets are ignored', async () => {
+test('answers without a participant id, from presenter sockets or from the presenter sky view are ignored', async () => {
   const r = await makeRoom(); const admin = await r.admin();
   await admin.msg({ k: 'cmd', c: 'quiz', v: 'open', q: CHOICE }); const n = r.state().quiz.n;
   const anon = await r.connect(); await anon.msg({ k: 'ans', n, a: 1 });
   await admin.msg({ k: 'ans', n, a: 1, pid: 'adminxxx' });
+  const hostSky = await r.connect(); await hostSky.msg({ k: 'hi', m: 'host', v: 'none', pid: 'hostview1' }); await hostSky.msg({ k: 'ans', n, a: 1, pid: 'hostview1' });
   assert.equal(counts(admin).quiz.answered, 0);
 });
 
