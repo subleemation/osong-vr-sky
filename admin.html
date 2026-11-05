@@ -6,276 +6,341 @@
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
 <title>진행자 화면 · 별이 빛나는 밤에</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0c0d11">
+<meta name="theme-color" content="#292A2D">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="css/admin.css?v=5">
+<link rel="stylesheet" href="css/admin.css?v=6">
 </head>
 <body>
+<!-- icons (stroke only, inherit the text colour) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-vr" viewBox="0 0 32 32"><path d="M4 12.5a3.5 3.5 0 0 1 3.5-3.5h17a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1-3.5 3.5h-4.2a2 2 0 0 1-1.7-1l-1.2-2a1.6 1.6 0 0 0-2.8 0l-1.2 2a2 2 0 0 1-1.7 1H7.5A3.5 3.5 0 0 1 4 18.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 14H2.5M28 14h1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-link" viewBox="0 0 32 32"><path d="M6 12a14 14 0 0 1 20 0M9.5 15.5a9 9 0 0 1 13 0M13 19a4 4 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="23" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 20h6M12 16.5V20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></g></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5" width="3.2" height="14" rx="1" fill="currentColor"/><rect x="13.8" y="5" width="3.2" height="14" rx="1" fill="currentColor"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><rect x="5.5" y="5" width="2.4" height="14" rx="1" fill="currentColor"/><path d="M18.5 5.5v13L9 12z" fill="currentColor"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><rect x="16.1" y="5" width="2.4" height="14" rx="1" fill="currentColor"/><path d="M5.5 5.5v13L15 12z" fill="currentColor"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
 <div id="login">
   <form class="lbox" id="lform">
-    <h1>별이 빛나는 밤에</h1>
+    <h1>VR 플라네타리움 관리자</h1>
+    <p class="lsub">별이 빛나는 밤에 · 진행자 화면</p>
     <input type="password" id="lkey" placeholder="관리자 비밀번호" autocomplete="current-password" aria-label="관리자 비밀번호">
-    <button class="hb go2 wide" type="submit">들어가기</button>
+    <button class="btn btn-primary wide" type="submit">들어가기</button>
     <div class="lerr" id="lerr" role="status"></div>
   </form>
 </div>
 
 <div id="host">
-  <header class="top">
-    <div>
-      <h1>별이 빛나는 밤에</h1>
-    </div>
-    <div class="stat">
-      <span id="hConn" class="bad">연결 중…</span>
-      <span id="hPeers">0대 접속</span>
-      <span id="hStatus"></span>
-      <span class="big" id="hBig" aria-live="polite">대기 중</span>
-    </div>
+  <!-- Header: title · navigation · session status -->
+  <header class="ah">
+    <h1 class="ah-title">VR 플라네타리움 관리자</h1>
+    <nav class="ah-nav" role="tablist" aria-label="관리 메뉴">
+      <button class="nav-btn" type="button" role="tab" data-tab="ops" aria-selected="true">운영 제어</button>
+      <button class="nav-btn" type="button" role="tab" data-tab="content" aria-selected="false">콘텐츠 관리</button>
+      <button class="nav-btn" type="button" role="tab" data-tab="people" aria-selected="false">참가자 관리</button>
+      <button class="nav-btn" type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
+    </nav>
+    <div class="ah-status" aria-live="polite"><i class="dot" id="sessDot"></i><span id="hBig">대기 중</span></div>
   </header>
 
-  <div class="grid">
-    <div class="stage hview">
-      <div class="bar spread">
-        <span></span>
-        <div class="bar">
-          <button class="hb sw" id="hFollow" type="button" aria-pressed="false">따라오게 하기</button>
-          <button class="hb sw" id="hArt" type="button" aria-pressed="true">별자리 그림</button>
-          <button class="hb sw" id="hPrevToggle" type="button" aria-pressed="true" aria-controls="hPrev">미리보기</button>
-        </div>
-      </div>
-      <div class="hframe"><iframe id="hSky" title="진행자 하늘 화면" allow="fullscreen"></iframe></div>
-      <div id="hPrev" class="hprev">
-        <div>
-          <div class="hplab"><span>VR 헤드셋 속 화면</span></div>
-          <div class="phone"><iframe id="pVR" title="VR 화면 미리보기"></iframe></div>
-        </div>
-        <div>
-          <div class="hplab"><span>화면으로 보기</span></div>
-          <div class="phone"><iframe id="pSC" title="화면 모드 미리보기"></iframe></div>
-        </div>
-      </div>
-      <p id="hFollowNote" hidden></p>
-      <div class="cctv-block">
-        <div class="hplab cctv-head"><span>참여자 화면 <b id="cctvCount">0대</b> <small>실제 폰 화면, 1.5초마다</small></span><button class="hb" id="cctvBig" type="button">크게 보기</button></div>
-        <div id="cctvHome"><div class="cctv-grid" id="cctvGrid"><p class="cctv-empty" id="cctvEmpty">휴대폰이 들어오면 여기에 화면이 떠요.</p></div></div>
-      </div>
-    </div>
+  <main class="am">
+    <!-- Left: operation panel (content changes with the navigation) -->
+    <aside class="ap" id="hostPanel">
 
-    <aside class="side">
-      <section aria-labelledby="inH">
-        <h2 id="inH">시작</h2>
-        <div class="bar"><button class="hb go2 wide" id="iStart" type="button">체험 시작</button></div>
-        <div class="bar">
-          <button class="hb" id="iSkip" type="button">오프닝 건너뛰기</button>
-          <button class="hb" id="iReplay" type="button">오프닝 다시 재생</button>
-          <button class="hb warn" id="iReset" type="button">체험 초기화</button>
-        </div>
-        <p class="istate" id="iState"></p>
-        <p class="istate dim" id="iFilm"></p>
-      </section>
-
-      <section aria-labelledby="stH">
-        <div class="bar spread"><h2 id="stH">이야기</h2></div>
-        <select id="sShow" aria-label="이야기 고르기"></select>
-        <div class="bar sky-pick"><span class="hn">이야기 하늘</span>
-          <button class="hb" id="sSkyEvent" type="button" aria-pressed="true">관측회 날 (11/1)</button>
-          <button class="hb" id="sSkyHost" type="button" aria-pressed="false">고른 날짜</button>
-        </div>
-        <p class="swarn" id="sWarn"></p>
-        <div class="bar">
-          <button class="hb" id="sPrev" type="button">이전</button>
-          <button class="hb go2 wide" id="sGo" type="button">시작</button>
-          <button class="hb warn" id="sEnd" type="button">끝내기</button>
-        </div>
-        <div class="scene">
-          <div class="sprog"><i id="sProg"></i></div>
-          <p id="sTitle"></p>
-          <p id="sNote"></p>
-          <p id="sCue"></p>
-        </div>
-        <ol class="slist" id="sList"></ol>
-      </section>
-
-      <section aria-labelledby="clH">
-        <div class="bar spread"><h2 id="clH">마무리 타이머</h2><span class="clstate" id="clState"></span></div>
-        <div class="bar">
-          <label class="clmin"><input type="number" id="clMin" min="1" max="30" step="1" value="3" aria-label="타이머 분"> 분</label>
-          <button class="hb go2" id="clStart" type="button">타이머 시작</button>
-          <button class="hb" id="clNow" type="button">지금 끝내기</button>
-          <button class="hb" id="clOff" type="button">안내 지우기</button>
-        </div>
-        <p class="istate" id="clText"></p>
-      </section>
-      <section aria-labelledby="cnH">
-        <h2 id="cnH">폰 연결</h2>
-        <div class="qr">
-          <canvas id="hQR" width="132" height="132" aria-label="폰 연결용 QR 코드"></canvas>
-          <div>
-            <input type="text" id="hLink" readonly aria-label="폰 연결 링크">
-            <div class="bar"><button class="hb" id="hCopy" type="button">링크 복사</button></div>
-            <div class="bar"><input type="text" id="hRoom" maxlength="24" aria-label="방 이름" style="width:110px;font-family:var(--mono)"><button class="hb" id="hRoomSet" type="button">방 바꾸기</button></div>
+      <!-- ===== 운영 제어 ===== -->
+      <div class="tab" data-panel="ops" role="tabpanel">
+        <section class="card dev" aria-label="VR 연결 상태">
+          <div class="dev-item">
+            <svg class="dev-ic"><use href="#i-vr"/></svg>
+            <div><span class="dev-lab">VR 보는 중 / 접속</span><b class="dev-num"><span id="dVr">0</span> / <span id="dAll">0</span></b></div>
           </div>
-        </div>
-      </section>
+          <div class="dev-div" aria-hidden="true"></div>
+          <div class="dev-item">
+            <svg class="dev-ic"><use href="#i-link"/></svg>
+            <div><span class="dev-lab">서버 연결</span><b class="dev-num sm"><span id="hConn" class="bad">연결 중…</span></b></div>
+          </div>
+        </section>
+        <p class="dev-foot"><span id="hPeers">0대 접속 (VR 중 0대)</span></p>
 
-      <details>
-        <summary>진행 순서 · 타이머</summary>
-        <div>
-          <div class="seg">
-            <button class="hb" id="hOrderGF" type="button" aria-pressed="true">① 설명 → 자유 관찰</button>
-            <button class="hb" id="hOrderFG" type="button" aria-pressed="false">② 자유 관찰 → 설명</button>
+        <section class="blk" aria-labelledby="stH">
+          <div class="blk-head"><h2 id="stH">스토리텔링 진행</h2><button class="btn btn-sm" id="sEnd" type="button">이야기 끝내기</button></div>
+          <select id="sShow" class="sel wide" aria-label="이야기 고르기"></select>
+          <div class="bar sky-pick"><span class="hn">이야기 하늘</span>
+            <button class="btn btn-sm" id="sSkyEvent" type="button" aria-pressed="true">관측회 날 (11/1)</button>
+            <button class="btn btn-sm" id="sSkyHost" type="button" aria-pressed="false">고른 날짜</button>
           </div>
-          <div class="bar"><label>설명 <input type="number" id="hGMin" min="1" max="60" value="10"> 분</label><label>자유 <input type="number" id="hFMin" min="1" max="60" value="10"> 분</label></div>
-          <div class="bar"><button class="hb go2" id="hPlanStart" type="button">순서대로 시작</button></div>
-          <div class="bar" id="hPlanRun" hidden>
-            <button class="hb go2" id="hNext" type="button">다음 단계</button>
-            <button class="hb" id="hPause" type="button">일시정지</button>
-            <button class="hb warn" id="hStop" type="button">끝내기</button>
+          <p class="swarn" id="sWarn"></p>
+          <ol class="slist" id="sList" aria-label="장면 단계"></ol>
+          <div class="scene">
+            <div class="sprog"><i id="sProg"></i></div>
+            <p id="sTitle"></p>
+            <p id="sNote"></p>
+            <p id="sCue"></p>
           </div>
-          <p class="hn" id="hPlanInfo"></p>
-          <div class="bar"><span class="hn">직접 바꾸기</span><button class="hb" id="hPhaseG" type="button" aria-pressed="false">설명 시간</button><button class="hb" id="hPhaseF" type="button" aria-pressed="false">자유 관찰</button></div>
-          <div id="hManualTimers" style="display:flex;flex-direction:column;gap:8px">
-            <span class="label">따로 쓰는 타이머</span>
-            <div class="bar">
-              <button class="hb" type="button" data-htimer="1">1분</button><button class="hb" type="button" data-htimer="3">3분</button>
-              <button class="hb" type="button" data-htimer="5">5분</button><button class="hb" type="button" data-htimer="10">10분</button>
-            </div>
-            <div class="bar"><input type="number" id="hTimerMin" min="1" max="90" value="7"> 분 <input type="text" id="hTimerLabel" placeholder="이름" maxlength="12" style="width:90px"><button class="hb" id="hTimerCustom" type="button">시작</button><button class="hb warn" id="hTimerOff" type="button">끄기</button></div>
-          </div>
-        </div>
-      </details>
+        </section>
 
-      <details>
-        <summary>모두 같이 볼 곳</summary>
-        <div>
-          <div class="hspots" id="hSpots"></div>
-          <div class="bar"><button class="hb" id="hSpotOff" type="button">가리키기 끄기</button></div>
-        </div>
-      </details>
-
-      <details>
-        <summary>하늘 시각 · 날짜 · 장소</summary>
-        <div>
-          <div class="hwhere" id="hWhere">2026. 11. 1 · 오송호수공원</div>
-          <div class="seg" id="hPlace">
-            <button class="hb" type="button" data-hplace="osong" aria-pressed="true">오송호수공원</button>
-            <button class="hb" type="button" data-hplace="seoul" aria-pressed="false">서울</button>
-            <button class="hb" type="button" data-hplace="jeju" aria-pressed="false">제주</button>
+        <section class="blk" aria-labelledby="opH">
+          <h2 id="opH">운영 제어</h2>
+          <div class="ctrls">
+            <button class="ctrl" id="cPause" type="button"><svg><use href="#i-pause"/></svg><span class="lbl">일시정지</span></button>
+            <button class="ctrl" id="cRestart" type="button"><svg><use href="#i-stop"/></svg><span class="lbl">재시작</span></button>
+            <button class="ctrl" id="sPrev" type="button"><svg><use href="#i-prev"/></svg><span class="lbl">이전 단계</span></button>
+            <button class="ctrl" id="sGo" type="button"><svg><use href="#i-next"/></svg><span class="lbl">이야기 시작</span></button>
           </div>
+          <p class="hn ctrl-note" id="cNote"></p>
+          <div class="timerow">
+            <svg class="tr-ic"><use href="#i-clock"/></svg>
+            <span class="tr-lab">시간 흐름</span>
+            <input type="range" id="hTime" min="0" max="720" step="5" value="90" aria-label="하늘 시각 (오후 6시 ~ 오전 6시)">
+            <select id="tSpeed" class="sel" aria-label="시간 흐름 배속">
+              <option value="-600">−600×</option><option value="-60">−60×</option><option value="-10">−10×</option>
+              <option value="0">멈춤</option><option value="1">1×</option><option value="10">10×</option><option value="60">60×</option><option value="600">600×</option>
+            </select>
+          </div>
+          <p class="hn tr-clock"><span id="tClock">오후 7:30</span> · 이야기 중에는 장면의 시각을 따라가요</p>
+        </section>
+
+        <section class="blk" aria-labelledby="inH">
+          <h2 id="inH">체험 시작</h2>
+          <div class="bar"><button class="btn btn-primary wide" id="iStart" type="button">체험 시작</button></div>
           <div class="bar">
-            <button class="hb" type="button" id="hSkyEvent">관측회 날</button>
-            <button class="hb" type="button" id="hSkyToday">오늘 밤</button>
-            <input type="date" id="hDate" value="2026-11-01" min="1900-01-01" max="2100-12-31" aria-label="날짜">
+            <button class="btn" id="iSkip" type="button">오프닝 건너뛰기</button>
+            <button class="btn" id="iReplay" type="button">오프닝 다시 재생</button>
+            <button class="btn btn-warn" id="iReset" type="button">체험 초기화</button>
           </div>
-          <p class="hnote" id="hSkyNote">이야기를 이 날짜로 볼지는 ‘이야기’ 칸의 ‘이야기 하늘’에서 골라요. 기본은 관측회 날(2026년 11월 1일)이에요.</p>
-          <div class="hclock" id="hClock">오후 7:30</div>
-          <input type="range" id="hTime" min="0" max="720" step="5" value="90" aria-label="하늘 시각 (오후 6시 ~ 오전 6시)">
-          <div class="bar" id="hStep">
-            <button class="hb" type="button" data-hstep="-60">◀ 1시간</button>
-            <button class="hb" type="button" data-hstep="-10">◀ 10분</button>
-            <button class="hb" type="button" data-hstep="10">10분 ▶</button>
-            <button class="hb" type="button" data-hstep="60">1시간 ▶</button>
-          </div>
-          <div class="seg" id="hSpeed">
-            <button class="hb" type="button" data-hspeed="-600" aria-pressed="false" title="1초에 10분씩 거꾸로">◀◀ 600배</button>
-            <button class="hb" type="button" data-hspeed="-60" aria-pressed="false" title="1초에 1분씩 거꾸로">◀ 60배</button>
-            <button class="hb" type="button" data-hspeed="0" aria-pressed="true">멈춤</button>
-            <button class="hb" type="button" data-hspeed="1" aria-pressed="false">실제 속도</button>
-            <button class="hb" type="button" data-hspeed="10" aria-pressed="false">10배</button>
-            <button class="hb" type="button" data-hspeed="60" aria-pressed="false" title="1초에 1분씩">60배 ▶</button>
-            <button class="hb" type="button" data-hspeed="600" aria-pressed="false" title="1초에 10분씩">600배 ▶▶</button>
-          </div>
-          <p class="hnote">시각은 설명·자유 관찰 시간에 모든 폰에 적용돼요. 이야기 중에는 장면의 시각을 따라가요.</p>
-        </div>
-      </details>
+          <p class="istate" id="iState"></p>
+          <p class="istate dim" id="iFilm"></p>
+        </section>
 
-      <details>
-        <summary>퀴즈</summary>
-        <div>
+        <section class="blk" aria-labelledby="clH">
+          <div class="blk-head"><h2 id="clH">마무리 타이머</h2><span class="clstate" id="clState"></span></div>
           <div class="bar">
-            <select id="qzSel" aria-label="준비된 퀴즈"></select>
-            <button class="hb go2" type="button" id="qzOpen">내기</button>
+            <label class="clmin"><input type="number" id="clMin" min="1" max="30" step="1" value="3" aria-label="타이머 분"> 분</label>
+            <button class="btn btn-primary" id="clStart" type="button">타이머 시작</button>
+            <button class="btn" id="clNow" type="button">지금 끝내기</button>
+            <button class="btn" id="clOff" type="button">안내 지우기</button>
+          </div>
+          <p class="istate" id="clText"></p>
+        </section>
+      </div>
+
+      <!-- ===== 콘텐츠 관리 ===== -->
+      <div class="tab" data-panel="content" role="tabpanel" hidden>
+        <section class="blk">
+          <h2>퀴즈</h2>
+          <div class="bar">
+            <select id="qzSel" class="sel grow" aria-label="준비된 퀴즈"></select>
+            <button class="btn btn-primary" type="button" id="qzOpen">내기</button>
           </div>
           <div class="qzlive" id="qzLive" hidden>
             <div class="qzq" id="qzLiveQ"></div>
             <div id="qzBars"></div>
             <div class="qzcount" id="qzCount"></div>
             <div class="bar">
-              <button class="hb go2" type="button" id="qzReveal">정답 공개</button>
-              <button class="hb" type="button" id="qzOff">퀴즈 끝내기</button>
+              <button class="btn btn-primary" type="button" id="qzReveal">정답 공개</button>
+              <button class="btn" type="button" id="qzOff">퀴즈 끝내기</button>
             </div>
           </div>
           <details class="qzmake">
             <summary>직접 만들기</summary>
             <div>
-              <input id="qzMQ" maxlength="80" placeholder="질문 (예: 가장 밝은 별은?)">
+              <input id="qzMQ" class="inp wide" maxlength="80" placeholder="질문 (예: 가장 밝은 별은?)">
               <div class="qzopts">
-                <label><input type="radio" name="qzAns" value="0" checked><input id="qzM0" maxlength="24" placeholder="보기 1"></label>
-                <label><input type="radio" name="qzAns" value="1"><input id="qzM1" maxlength="24" placeholder="보기 2"></label>
-                <label><input type="radio" name="qzAns" value="2"><input id="qzM2" maxlength="24" placeholder="보기 3 (없어도 돼요)"></label>
-                <label><input type="radio" name="qzAns" value="3"><input id="qzM3" maxlength="24" placeholder="보기 4 (없어도 돼요)"></label>
+                <label><input type="radio" name="qzAns" value="0" checked><input id="qzM0" class="inp" maxlength="24" placeholder="보기 1"></label>
+                <label><input type="radio" name="qzAns" value="1"><input id="qzM1" class="inp" maxlength="24" placeholder="보기 2"></label>
+                <label><input type="radio" name="qzAns" value="2"><input id="qzM2" class="inp" maxlength="24" placeholder="보기 3 (없어도 돼요)"></label>
+                <label><input type="radio" name="qzAns" value="3"><input id="qzM3" class="inp" maxlength="24" placeholder="보기 4 (없어도 돼요)"></label>
               </div>
               <div class="bar">
-                <button class="hb" type="button" id="qzMakeChoice">고르기 퀴즈 내기</button>
-                <button class="hb" type="button" id="qzMakeFind">‘이동’ 목록에서 고른 곳 찾기 퀴즈</button>
+                <button class="btn" type="button" id="qzMakeChoice">고르기 퀴즈 내기</button>
+                <button class="btn" type="button" id="qzMakeFind">‘이동’ 목록에서 고른 곳 찾기 퀴즈</button>
               </div>
               <p class="hnote">동그라미는 정답 보기예요. 찾기 퀴즈는 아래 ‘원하는 하늘로 이동’에서 고른 곳을 찾게 해요.</p>
             </div>
           </details>
-        </div>
-      </details>
+        </section>
 
-      <details>
-        <summary>화면에 보이는 것</summary>
-        <div>
-          <div class="hdisp" id="hDisp"></div>
-          <p class="hnote">‘각자’는 참가자가 자기 폰 메뉴에서 고른 대로 보여요.</p>
-        </div>
-      </details>
+        <section class="blk">
+          <h2>모두 같이 볼 곳</h2>
+          <div class="hspots" id="hSpots"></div>
+          <div class="bar"><button class="btn" id="hSpotOff" type="button">가리키기 끄기</button></div>
+        </section>
 
-      <details>
-        <summary>원하는 하늘로 이동 · 확대</summary>
-        <div>
+        <section class="blk">
+          <h2>원하는 하늘로 이동 · 확대</h2>
           <div class="bar">
-            <select id="hGoSel" aria-label="이동할 곳"></select>
-            <button class="hb go2" type="button" id="hGo">이동</button>
+            <select id="hGoSel" class="sel grow" aria-label="이동할 곳"></select>
+            <button class="btn btn-primary" type="button" id="hGo">이동</button>
           </div>
           <div class="bar" id="hCompass">
-            <button class="hb" type="button" data-hdir="0">북</button>
-            <button class="hb" type="button" data-hdir="90">동</button>
-            <button class="hb" type="button" data-hdir="180">남</button>
-            <button class="hb" type="button" data-hdir="270">서</button>
-            <button class="hb" type="button" data-hdir="zen">머리 위</button>
+            <button class="btn" type="button" data-hdir="0">북</button>
+            <button class="btn" type="button" data-hdir="90">동</button>
+            <button class="btn" type="button" data-hdir="180">남</button>
+            <button class="btn" type="button" data-hdir="270">서</button>
+            <button class="btn" type="button" data-hdir="zen">머리 위</button>
           </div>
           <div class="bar">
-            <button class="hb" type="button" data-hzoom="-1">확대 +</button>
-            <input type="range" id="hFov" min="20" max="120" step="1" value="75" aria-label="보이는 넓이 (도)">
-            <button class="hb" type="button" data-hzoom="1">축소 −</button>
-            <span class="hnote" id="hFovText">75°</span>
+            <button class="btn" type="button" data-hzoom="-1">확대 +</button>
+            <input type="range" id="hFov" class="grow" min="20" max="120" step="1" value="75" aria-label="보이는 넓이 (도)">
+            <button class="btn" type="button" data-hzoom="1">축소 −</button>
+            <span class="hn" id="hFovText">75°</span>
           </div>
-          <p class="hnote">이동하면 ‘따라오게 하기’가 켜져서 화면 모드 폰은 같은 곳으로 돌아가고, VR 폰에는 그쪽을 가리키는 화살표가 떠요.</p>
-        </div>
-      </details>
+          <div class="bar">
+            <button class="btn sw" id="hFollow" type="button" aria-pressed="false">따라오게 하기</button>
+          </div>
+          <p class="hnote">이동하면 ‘따라오게 하기’가 켜져서 화면 모드 폰은 같은 곳으로 돌아가고, VR 폰에는 그쪽을 가리키는 화살표가 떠요. 오른쪽 미러링에서 ‘진행자 화면’을 고르면 마우스로 끌어서 방향을 바꿀 수 있어요.</p>
+          <p id="hFollowNote" class="hnote" hidden></p>
+        </section>
 
-      <details>
-        <summary>메시지 · 쉬는 시간</summary>
-        <div>
-          <div class="bar"><input type="text" id="hNote" maxlength="40" placeholder="폰 화면에 띄울 말" style="flex:1 1 160px"><button class="hb go2" id="hSend" type="button">보내기</button><button class="hb" id="hNoteClear" type="button">지우기</button></div>
-          <div class="bar">
-            <button class="hb" type="button" data-hnote="이쪽을 봐 주세요">이쪽을 봐 주세요</button>
-            <button class="hb" type="button" data-hnote="질문 있나요?">질문 있나요?</button>
-            <button class="hb" type="button" data-hnote="헤드셋을 잠깐 벗어요">헤드셋을 잠깐 벗어요</button>
+        <section class="blk">
+          <h2>화면에 보이는 것</h2>
+          <div class="bar"><button class="btn sw" id="hArt" type="button" aria-pressed="true">별자리 그림 (빠른 켬·끔)</button></div>
+          <div class="hdisp" id="hDisp"></div>
+          <p class="hnote">‘각자’는 참가자가 자기 폰 메뉴에서 고른 대로 보여요.</p>
+        </section>
+      </div>
+
+      <!-- ===== 참가자 관리 ===== -->
+      <div class="tab" data-panel="people" role="tabpanel" hidden>
+        <section class="blk">
+          <h2>폰 연결</h2>
+          <div class="qr">
+            <canvas id="hQR" width="132" height="132" aria-label="폰 연결용 QR 코드"></canvas>
+            <div class="qr-side">
+              <input type="text" id="hLink" class="inp wide" readonly aria-label="폰 연결 링크">
+              <div class="bar"><button class="btn" id="hCopy" type="button">링크 복사</button></div>
+              <div class="bar"><input type="text" id="hRoom" class="inp mono" maxlength="24" aria-label="방 이름" style="width:120px"><button class="btn" id="hRoomSet" type="button">방 바꾸기</button></div>
+            </div>
           </div>
-          <div class="bar"><button class="hb warn sw" id="hHold" type="button" aria-pressed="false">화면 가리기 (쉬는 시간)</button></div>
-        </div>
-      </details>
+        </section>
+
+        <section class="blk cctv-block">
+          <div class="blk-head"><h2>참가자 화면 <b id="cctvCount" class="cnt">0대</b></h2><button class="btn btn-sm" id="cctvBig" type="button">크게 보기</button></div>
+          <p class="hnote">실제 폰 화면이 1.5초마다 와요. 오른쪽 미러링에서 한 대를 크게 보거나 ‘분할 보기’로 모두 볼 수 있어요.</p>
+          <div id="cctvHome"><div class="cctv-grid" id="cctvGrid"><p class="cctv-empty" id="cctvEmpty">휴대폰이 들어오면 여기에 화면이 떠요.</p></div></div>
+        </section>
+
+        <section class="blk">
+          <div class="blk-head"><h2>미리보기</h2><button class="btn btn-sm sw" id="hPrevToggle" type="button" aria-pressed="true" aria-controls="hPrev">보이기</button></div>
+          <p class="hnote">이 노트북에서 참가자 화면을 흉내 내요(마우스가 고개 대신). 실제 폰 화면은 위 ‘참가자 화면’이에요.</p>
+          <div id="hPrev" class="hprev">
+            <div><div class="hplab">VR 헤드셋 속 화면</div><div class="phone"><iframe id="pVR" title="VR 화면 미리보기"></iframe></div></div>
+            <div><div class="hplab">화면으로 보기</div><div class="phone"><iframe id="pSC" title="화면 모드 미리보기"></iframe></div></div>
+          </div>
+        </section>
+
+        <section class="blk">
+          <h2>메시지 · 쉬는 시간</h2>
+          <div class="bar"><input type="text" id="hNote" class="inp grow" maxlength="40" placeholder="폰 화면에 띄울 말"><button class="btn btn-primary" id="hSend" type="button">보내기</button><button class="btn" id="hNoteClear" type="button">지우기</button></div>
+          <div class="bar">
+            <button class="btn" type="button" data-hnote="이쪽을 봐 주세요">이쪽을 봐 주세요</button>
+            <button class="btn" type="button" data-hnote="질문 있나요?">질문 있나요?</button>
+            <button class="btn" type="button" data-hnote="헤드셋을 잠깐 벗어요">헤드셋을 잠깐 벗어요</button>
+          </div>
+          <div class="bar"><button class="btn btn-warn sw" id="hHold" type="button" aria-pressed="false">화면 가리기 (쉬는 시간)</button></div>
+        </section>
+      </div>
+
+      <!-- ===== 설정 ===== -->
+      <div class="tab" data-panel="settings" role="tabpanel" hidden>
+        <section class="blk">
+          <h2>하늘 날짜 · 장소 · 시각</h2>
+          <div class="hwhere" id="hWhere">2026. 11. 1 · 오송호수공원</div>
+          <div class="seg" id="hPlace">
+            <button class="btn" type="button" data-hplace="osong" aria-pressed="true">오송호수공원</button>
+            <button class="btn" type="button" data-hplace="seoul" aria-pressed="false">서울</button>
+            <button class="btn" type="button" data-hplace="jeju" aria-pressed="false">제주</button>
+          </div>
+          <div class="bar">
+            <button class="btn" type="button" id="hSkyEvent">관측회 날</button>
+            <button class="btn" type="button" id="hSkyToday">오늘 밤</button>
+            <input type="date" id="hDate" class="inp" value="2026-11-01" min="1900-01-01" max="2100-12-31" aria-label="날짜">
+          </div>
+          <p class="hnote" id="hSkyNote">이야기를 이 날짜로 볼지는 ‘운영 제어’의 ‘이야기 하늘’에서 골라요. 기본은 관측회 날(2026년 11월 1일)이에요.</p>
+          <div class="hclock" id="hClock">오후 7:30</div>
+          <div class="bar" id="hStep">
+            <button class="btn" type="button" data-hstep="-60">◀ 1시간</button>
+            <button class="btn" type="button" data-hstep="-10">◀ 10분</button>
+            <button class="btn" type="button" data-hstep="10">10분 ▶</button>
+            <button class="btn" type="button" data-hstep="60">1시간 ▶</button>
+          </div>
+          <div class="seg wrap" id="hSpeed">
+            <button class="btn" type="button" data-hspeed="-600" aria-pressed="false" title="1초에 10분씩 거꾸로">◀◀ 600배</button>
+            <button class="btn" type="button" data-hspeed="-60" aria-pressed="false" title="1초에 1분씩 거꾸로">◀ 60배</button>
+            <button class="btn" type="button" data-hspeed="0" aria-pressed="true">멈춤</button>
+            <button class="btn" type="button" data-hspeed="1" aria-pressed="false">실제 속도</button>
+            <button class="btn" type="button" data-hspeed="10" aria-pressed="false">10배</button>
+            <button class="btn" type="button" data-hspeed="60" aria-pressed="false" title="1초에 1분씩">60배 ▶</button>
+            <button class="btn" type="button" data-hspeed="600" aria-pressed="false" title="1초에 10분씩">600배 ▶▶</button>
+          </div>
+          <p class="hnote">시각 슬라이더는 ‘운영 제어’에 있어요. 시각은 설명·자유 관찰 시간에 모든 폰에 적용되고, 이야기 중에는 장면의 시각을 따라가요.</p>
+        </section>
+
+        <section class="blk">
+          <h2>진행 순서 · 타이머</h2>
+          <div class="seg">
+            <button class="btn" id="hOrderGF" type="button" aria-pressed="true">① 설명 → 자유 관찰</button>
+            <button class="btn" id="hOrderFG" type="button" aria-pressed="false">② 자유 관찰 → 설명</button>
+          </div>
+          <div class="bar"><label class="numlab">설명 <input type="number" id="hGMin" class="inp num" min="1" max="60" value="10"> 분</label><label class="numlab">자유 <input type="number" id="hFMin" class="inp num" min="1" max="60" value="10"> 분</label></div>
+          <div class="bar"><button class="btn btn-primary" id="hPlanStart" type="button">순서대로 시작</button></div>
+          <div class="bar" id="hPlanRun" hidden>
+            <button class="btn btn-primary" id="hNext" type="button">다음 단계</button>
+            <button class="btn" id="hPause" type="button">일시정지</button>
+            <button class="btn btn-warn" id="hStop" type="button">끝내기</button>
+          </div>
+          <p class="hn" id="hPlanInfo"></p>
+          <div class="bar"><span class="hn">직접 바꾸기</span><button class="btn" id="hPhaseG" type="button" aria-pressed="false">설명 시간</button><button class="btn" id="hPhaseF" type="button" aria-pressed="false">자유 관찰</button></div>
+          <div id="hManualTimers" class="mtimers">
+            <span class="label">따로 쓰는 타이머</span>
+            <div class="bar">
+              <button class="btn" type="button" data-htimer="1">1분</button><button class="btn" type="button" data-htimer="3">3분</button>
+              <button class="btn" type="button" data-htimer="5">5분</button><button class="btn" type="button" data-htimer="10">10분</button>
+            </div>
+            <div class="bar"><input type="number" id="hTimerMin" class="inp num" min="1" max="90" value="7"> 분 <input type="text" id="hTimerLabel" class="inp" placeholder="이름" maxlength="12" style="width:96px"><button class="btn" id="hTimerCustom" type="button">시작</button><button class="btn btn-warn" id="hTimerOff" type="button">끄기</button></div>
+          </div>
+        </section>
+      </div>
     </aside>
-  </div>
+
+    <!-- Right: participant mirroring · narration -->
+    <section class="mir hview" aria-labelledby="mirH">
+      <div class="mir-bar">
+        <div class="mir-title">
+          <svg class="mir-ic"><use href="#i-monitor"/></svg>
+          <h2 id="mirH">참가자 화면 미러링 <span class="mir-live" id="mirLive">(대기)</span></h2>
+          <span class="mir-meta" id="mirMeta"></span>
+        </div>
+        <div class="mir-tools">
+          <select id="mirSel" class="sel" aria-label="대표 화면"><option value="host">진행자 화면</option></select>
+          <button class="btn" id="mirSplit" type="button" aria-pressed="false"><svg><use href="#i-grid"/></svg>분할 보기</button>
+        </div>
+      </div>
+      <div class="mir-stage" id="mirStage">
+        <iframe id="hSky" title="진행자 하늘 화면" allow="fullscreen"></iframe>
+        <img id="mirImg" alt="선택한 참가자의 화면" hidden>
+        <div class="mir-wait" id="mirWait" hidden><p id="mirWaitT">참가자 화면을 기다리는 중이에요</p><p class="hn" id="mirWaitS">휴대폰이 QR로 들어오면 여기에 떠요.</p></div>
+        <div class="mir-split" id="mirSplitBox" hidden></div>
+      </div>
+      <div class="narr">
+        <button class="narr-btn" id="nPrev" type="button" aria-label="이전 장면"><svg><use href="#i-left"/></svg></button>
+        <div class="narr-text" aria-live="polite"><p id="nTitle">이야기를 시작하면 장면 자막이 여기에 떠요.</p><p class="narr-sub" id="nSub"></p></div>
+        <button class="narr-btn" id="nNext" type="button" aria-label="다음 장면"><svg><use href="#i-right"/></svg></button>
+      </div>
+    </section>
+  </main>
 </div>
 
 <div id="cctvWall" hidden role="dialog" aria-label="참여자 화면 모아 보기">
-  <div class="cctv-wall-head"><b>참여자 화면</b><span id="cctvWallCount"></span><button class="hb" id="cctvClose" type="button">닫기 (Esc)</button></div>
+  <div class="cctv-wall-head"><b>참여자 화면</b><span id="cctvWallCount"></span><button class="btn" id="cctvClose" type="button">닫기 (Esc)</button></div>
   <div class="cctv-wall-body" id="cctvWallBody"></div>
 </div>
 <script src="vendor/qrcode.js?v=3"></script>
@@ -284,8 +349,8 @@
 <script src="js/sky-core.js?v=3"></script>
 <script src="story.js?v=4"></script>
 <script src="quiz.js?v=1"></script>
-<script src="js/admin.js?v=5"></script>
-<script src="js/cctv.js?v=1"></script>
-
+<script src="js/admin.js?v=6"></script>
+<script src="js/cctv.js?v=2"></script>
+<script src="js/admin-ui.js?v=1"></script>
 </body>
 </html>
