@@ -170,6 +170,8 @@
       : '꺼져 있어요. 이야기 장면에 일주운동이 있으면 그 장면에서만 나와요.';
   }
   setInterval(renderTrail, 500);
+  document.querySelectorAll('[data-own]').forEach(function (b) { b.addEventListener('click', function () { cmd('own', { v: b.getAttribute('data-own') === '1' }); }); });
+  setInterval(function () { var own = !ST || ST.own !== false; document.querySelectorAll('[data-own]').forEach(function (b) { b.setAttribute('aria-pressed', (b.getAttribute('data-own') === '1') === own ? 'true' : 'false'); }); }, 500);
 
   // ---- quiz ----
   (window.QUIZZES || []).forEach(function (q, i) {

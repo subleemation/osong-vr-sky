@@ -376,8 +376,7 @@
     drawStoryPointer(view);
     var stTr = STORY.ev && STORY.ev.trails;
     if (stTr && stTr.p > 0) drawTrails(view, stTr.hours * 60 * stTr.p);
-    else if (NET.room && SYNC.has) { if (SYNC.trail) drawTrails(view, SYNC.trail.h * 60 * Math.min(1, (Date.now() - SYNC.trail.t0) / 6000)); }   // with a presenter: only 일주운동
-    else if (st.show.trails) drawTrails(view, 120);   // alone: the menu chip (off by default)
+    else { var myTr = myTrail(); if (myTr) drawTrails(view, myTr.h * 60 * Math.min(1, (Date.now() - myTr.t0) / 6000)); }   // presenter's 일주운동, or my own (free viewing / alone)
     // stars
     var lim = frame.lim, sizeK = Math.max(0.85, Math.min(2, Math.sqrt(view.f / 380))) * (view.vr ? 1.25 : 1);
     var M = frame.M, T = frame.T;
@@ -467,7 +466,7 @@
     }
     if (view.vr && !PANEL.open && performance.now() - (st.vrT || 0) < 12000) {
       c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
-      var hint = '↓ 아래를 내려다보면 설정이 나와요';
+      var hint = withHost() && freeView() ? '↓ 아래를 보면 보기 메뉴가 나와요' : '↓ 아래를 내려다보면 설정이 나와요';
       var hw = c.measureText(hint).width;
       c.fillStyle = 'rgba(14,15,20,0.94)'; roundRect(view.cx - hw / 2 - 10, view.cy + view.R * 0.66 - fontPx * 0.8, hw + 20, fontPx * 1.6, fontPx * 0.8); c.fill();
       c.fillStyle = '#e8cf8a'; c.fillText(hint, view.cx, view.cy + view.R * 0.66);
@@ -834,7 +833,38 @@
   var TITLE_FONT = LABEL_FONT;
   var BODY_FONT = LABEL_FONT;
   // ---------- gaze settings panel (look down at your feet, stare at a button ~1 s) ----------
-  var PANEL = { open: false, yaw: 180, lastAz: 180, id: null, t: 0, repeat: 0, toast: '', toastT: 0 };
+  // ---------- my own view (자유 관찰): each participant can turn display items on and off for their own phone ----------
+  // With a presenter: only while nothing is being presented (no story, quiz, guide spot, closing screen, 'follow me', opening film)
+  // and the presenter allows it. A new story starts everyone back on the presenter's settings.
+  var VIEWK = [['trails', '일주운동'], ['art', '별자리 그림'], ['lines', '별자리 선'], ['names', '별자리 이름'], ['stars', '별 이름'], ['mw', '은하수'], ['dirs', '동서남북']];
+  var MINE = {}, mineTrailT0 = 0;
+  function withHost() { return !!(NET.room && SYNC.has); }
+  function freeView() {
+    if (!withHost()) return false;
+    if (SYNC.own === false) return false;
+    return !SYNC.story && !STORY.ev && !SYNC.close && !SYNC.quiz && !(SYNC.view && SYNC.view.on) && !(SYNC.phase === 'guide' && SYNC.spot) && !introCovers();
+  }
+  function canEditView() { return !withHost() || freeView(); }
+  function myTrail() {   // star trails outside a story scene: { h: hours, t0: when it started growing } or null
+    if (withHost()) {
+      if (freeView() && 'trails' in MINE) return MINE.trails ? { h: SYNC.trail ? SYNC.trail.h : 3, t0: mineTrailT0 } : null;
+      return SYNC.trail || null;
+    }
+    return st.show.trails ? { h: 2, t0: mineTrailT0 } : null;
+  }
+  function viewOn(k) { return k === 'trails' ? !!myTrail() : k === 'art' ? artOn() : opt(k); }
+  function viewName(k) { for (var i = 0; i < VIEWK.length; i++) if (VIEWK[i][0] === k) return VIEWK[i][1]; return k; }
+  function toggleView(k) {   // returns a short message for the toast
+    if (!canEditView()) return SYNC.own === false ? '진행자가 지금은 못 바꾸게 했어요' : '자유 관찰 때 바꿀 수 있어요';
+    var on = !viewOn(k);
+    if (withHost()) MINE[k] = on;
+    else { st.show[k] = on; var ch = document.querySelector('[data-opt="' + k + '"]'); if (ch) ch.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+    if (k === 'trails') mineTrailT0 = Date.now();
+    if (k === 'art') { artSlow = false; syncArtUi(); }
+    renderViewSheet();
+    return viewName(k) + (on ? ' 켰어요' : ' 껐어요');
+  }
+  var PANEL = { open: false, yaw: 180, lastAz: 180, id: null, t: 0, repeat: 0, toast: '', toastT: 0, wasFree: false };
   var DWELL = 0.9, REPEAT = 0.4;
   var BTNS = [
     { id: 'ipd-', x: -0.26, y: 0.31, w: 0.17, h: 0.15, label: '−', rep: true },
@@ -843,10 +873,11 @@
     { id: 'warp+', x: 0.26, y: 0.11, w: 0.17, h: 0.15, label: '+', rep: true },
     { id: 'fov-', x: -0.26, y: -0.09, w: 0.17, h: 0.15, label: '−', rep: true },
     { id: 'fov+', x: 0.26, y: -0.09, w: 0.17, h: 0.15, label: '+', rep: true },
-    { id: 'south', x: -0.5, y: -0.31, w: 0.62, h: 0.16, label: '이 방향이 남쪽' },
-    { id: 'menu', x: 0.18, y: -0.31, w: 0.3, h: 0.16, label: '메뉴로' },
-    { id: 'art', x: 0.56, y: -0.31, w: 0.34, h: 0.16, label: '그림 끄기' }
+    { id: 'south', x: -0.32, y: -0.31, w: 0.62, h: 0.16, label: '이 방향이 남쪽' },
+    { id: 'menu', x: 0.36, y: -0.31, w: 0.5, h: 0.16, label: '메뉴로' }
   ];
+  // right column: what to show (일주운동, 별자리 그림 …)
+  VIEWK.forEach(function (v, i) { BTNS.push({ id: 'v:' + v[0], x: 0.86, y: 0.34 - i * 0.135, w: 0.42, h: 0.115, label: v[1], view: v[0] }); });
   var ROWS = [
     { y: 0.31, name: '두 화면 간격', val: function () { return st.ipdAdj === 0 ? '기본' : (st.ipdAdj > 0 ? '+' : '') + st.ipdAdj; } },
     { y: 0.11, name: '렌즈 보정', val: function () { return st.warp < 0.1 ? '끔' : Math.round(st.warp * 10); } },
@@ -885,6 +916,7 @@
       saveSettings();
       return;
     } else if (id === 'menu') { leave(); return; }
+    else if (id.indexOf('v:') === 0) { PANEL.toast = toggleView(id.slice(2)); PANEL.toastT = 1.8; return; }
     else if (id === 'art') {
       if (NET.room && SYNC.has && SYNC.art != null) { PANEL.toast = '지금은 진행자가 정해요'; PANEL.toastT = 1.6; return; }
       st.show.art = !st.show.art; artSlow = false; syncArtUi();
@@ -899,6 +931,7 @@
   }
   function updatePanel(dt) {
     if (PANEL.toastT > 0) PANEL.toastT -= dt;
+    var fv = freeView(); if (fv && !PANEL.wasFree && st.mode === 'vr') st.vrT = performance.now(); PANEL.wasFree = fv;   // free viewing began: show the hint again
     if (st.mode !== 'vr' || introCovers()) { PANEL.open = false; PANEL.id = null; return; }
     var f = st.cam.f, pitch = Math.asin(Math.max(-1, Math.min(1, f[2]))) / D2R;
     if (pitch > -30) PANEL.lastAz = C.enuToAltAz(f).az;
@@ -935,26 +968,31 @@
     function hpx() { return Math.hypot(A[0] - Dp[0], A[1] - Dp[1]); }
     function center(x, y, out) { return planePt(view, x, y, out); }
     // backdrop
-    if (quad(0, -0.04, 1.42, 1.04)) { c.fillStyle = 'rgba(14,15,20,0.97)'; c.fill(); c.strokeStyle = 'rgba(232,207,138,0.4)'; c.lineWidth = 1.5; c.stroke(); }
+    if (quad(0.2, -0.04, 1.82, 1.04)) { c.fillStyle = 'rgba(14,15,20,0.97)'; c.fill(); c.strokeStyle = 'rgba(232,207,138,0.4)'; c.lineWidth = 1.5; c.stroke(); }
     c.textBaseline = 'middle';
     var P2 = [0, 0];
     // title
-    if (center(0, 0.48, P2)) { c.font = Math.round(fontPx * 1.05) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#e8cf8a'; c.fillText('설정 · 버튼을 1초 바라보세요', P2[0], P2[1]); }
+    if (center(-0.2, 0.48, P2)) { c.font = Math.round(fontPx * 1.05) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#e8cf8a'; c.fillText('설정 · 버튼을 1초 바라보세요', P2[0], P2[1]); }
     // row labels + values
     for (var r = 0; r < ROWS.length; r++) {
       if (center(-0.76, ROWS[r].y, P2)) { c.font = Math.round(fontPx * 0.95) + 'px ' + LABEL_FONT; c.textAlign = 'right'; c.fillStyle = 'rgba(241,242,245,0.9)'; c.fillText(ROWS[r].name, P2[0] + fontPx * 3.2, P2[1]); }
       if (center(0, ROWS[r].y, P2)) { c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#ffffff'; c.fillText(String(ROWS[r].val()), P2[0], P2[1]); }
     }
+    var canEdit = canEditView();
+    if (center(0.86, 0.48, P2)) { c.font = Math.round(fontPx * 0.85) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = canEdit ? '#e8cf8a' : 'rgba(241,242,245,0.55)'; c.fillText(canEdit ? '켜고 끄기' : '자유 관찰 때만', P2[0], P2[1]); }
     // buttons
     for (var i = 0; i < BTNS.length; i++) {
       var b = BTNS[i];
       if (!quad(b.x, b.y, b.w, b.h)) continue;
-      var active = PANEL.id === b.id, prog = active ? Math.max(0, Math.min(1, PANEL.t / DWELL)) : 0;
-      c.fillStyle = active ? 'rgba(232,207,138,' + (0.25 + 0.55 * prog) + ')' : 'rgba(40,42,52,0.95)';
-      c.fill(); c.strokeStyle = active ? '#e8cf8a' : 'rgba(255,255,255,0.28)'; c.lineWidth = 1.5; c.stroke();
+      var active = PANEL.id === b.id, prog = active ? Math.max(0, Math.min(1, PANEL.t / DWELL)) : 0, on = b.view ? viewOn(b.view) : false, dim = b.view && !canEdit;
+      c.fillStyle = active ? 'rgba(232,207,138,' + (0.25 + 0.55 * prog) + ')' : on ? 'rgba(232,207,138,0.30)' : 'rgba(40,42,52,0.95)';
+      c.fill(); c.strokeStyle = active || on ? '#e8cf8a' : 'rgba(255,255,255,0.28)'; c.lineWidth = 1.5; c.stroke();
+      var bw = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]);
       if (center(b.x, b.y, P2)) {
-        c.font = Math.round(Math.max(fontPx * 0.9, hpx() * (b.label.length > 2 ? 0.38 : 0.7))) + 'px ' + LABEL_FONT;
-        c.textAlign = 'center'; c.fillStyle = active ? '#fff' : 'rgba(241,242,245,0.95)'; c.fillText(b.label, P2[0], P2[1]);
+        var fs = b.view ? hpx() * 0.5 : Math.max(fontPx * 0.9, hpx() * (b.label.length > 2 ? 0.38 : 0.7));
+        c.font = Math.round(fs) + 'px ' + LABEL_FONT;
+        var tw = c.measureText(b.label).width; if (tw > bw * 0.86) { fs *= bw * 0.86 / tw; c.font = Math.round(fs) + 'px ' + LABEL_FONT; }
+        c.textAlign = 'center'; c.fillStyle = active ? '#fff' : dim ? 'rgba(241,242,245,0.4)' : 'rgba(241,242,245,0.95)'; c.fillText(b.label, P2[0], P2[1]);
       }
     }
     if (PANEL.toastT > 0 && center(0, -0.44, P2)) { c.font = Math.round(fontPx * 1.1) + 'px ' + LABEL_FONT; c.textAlign = 'center'; c.fillStyle = '#9fe8b0'; c.fillText(PANEL.toast, P2[0], P2[1]); }
@@ -1031,12 +1069,16 @@
   }
   // what to draw: the presenter's switch wins while connected, otherwise this phone's menu
   function opt(k) {
-    if (NET.room && SYNC.has && SYNC.disp && typeof SYNC.disp[k] === 'boolean') return SYNC.disp[k];
+    if (withHost()) {
+      if (k in MINE && freeView()) return MINE[k];
+      if (SYNC.disp && typeof SYNC.disp[k] === 'boolean') return SYNC.disp[k];
+    }
     return !!st.show[k];
   }
   function artOn() {
     if (artSlow) return false;
-    if (NET.room && SYNC.has && SYNC.art != null) return SYNC.art;
+    if (withHost() && 'art' in MINE && freeView()) return MINE.art;
+    if (withHost() && SYNC.art != null) return SYNC.art;
     return opt('art');
   }
   var ACAM = [0, 0, 0], APTS = [];
@@ -1267,6 +1309,8 @@
     SYNC.trail = s.trail && s.trail.h > 0 ? { h: +s.trail.h, t0: Date.now() - (s.trail.el || 0) } : null;
     SYNC.quiz = s.quiz && s.quiz.n ? s.quiz : null;
     setTimeout(renderSkyWhere, 0);
+    if (s.story && s.story.show && !SYNC.story) MINE = {};   // a new story: back to the presenter's settings
+    SYNC.own = s.own !== false;
     SYNC.story = s.story && s.story.show ? { show: s.story.show, i: s.story.i | 0, t0: Date.now() - (s.story.el || 0), sky: !!s.story.sky } : null;
     SYNC.pin = s.pin === 'host' || s.pin === 'event' ? s.pin : null;
     SYNC.view = s.view ? { on: !!s.view.on, yaw: +s.view.yaw || 0, pitch: +s.view.pitch || 0, fov: +s.view.fov || 75 } : null;
@@ -1912,6 +1956,13 @@
       }, 300);
     });
   });
+  function renderViewSheet() {
+    var show = st.mode === 'screen' && !NET.hostview && !NET.sim && canEditView();
+    $('viewBtn').hidden = !show;
+    if (!show) { $('viewSheet').hidden = true; return; }
+    if ($('viewSheet').hidden) return;
+    document.querySelectorAll('[data-view]').forEach(function (b) { b.setAttribute('aria-pressed', viewOn(b.getAttribute('data-view')) ? 'true' : 'false'); });
+  }
   function syncArtUi() {
     for (var i = 0; i < BTNS.length; i++) if (BTNS[i].id === 'art') BTNS[i].label = st.show.art ? '그림 끄기' : '그림 켜기';
     var ch = document.querySelector('[data-opt="art"]'); if (ch) ch.setAttribute('aria-pressed', st.show.art ? 'true' : 'false');
@@ -1923,6 +1974,7 @@
     introPrime();
     $('menu').hidden = true;
     $('hud').hidden = mode !== 'screen';
+    setTimeout(renderViewSheet, 0);
     $('hint').hidden = mode !== 'screen';
     if (mode === 'screen') { st.yaw = C.enuToAltAz(st.cam.f).az; st.pitch = 30; setTimeout(function () { $('hint').hidden = true; }, 4000); }
     lastInfoKey = '__';
@@ -1990,6 +2042,14 @@
     askMotionPermission().then(function () { st.useSensor = false; enter('screen'); });
   });
   $('backBtn').addEventListener('click', leave);
+  // screen mode: '보기' button + sheet with the same items
+  VIEWK.forEach(function (v) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = v[1]; b.setAttribute('data-view', v[0]);
+    b.addEventListener('click', function () { var msg = toggleView(v[0]); $('viewNote').textContent = canEditView() ? '' : msg; });
+    $('viewChips').appendChild(b);
+  });
+  $('viewBtn').addEventListener('click', function () { $('viewSheet').hidden = !$('viewSheet').hidden; renderViewSheet(); });
+  setInterval(renderViewSheet, 500);
 
   // double tap anywhere in VR -> menu
   var lastTap = 0;
@@ -2073,5 +2133,5 @@
     });
   }
   requestAnimationFrame(loop);
-  window.__sky = { skyKey: function () { return skyKey; }, intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
+  window.__sky = { skyKey: function () { return skyKey; }, intro: INTRO,  st: st, frame: function () { return frame; }, qz: QZ, sync: SYNC, story: STORY, veil: VEIL, cam: CAM, enter: enter, panel: PANEL, view: { toggle: toggleView, on: viewOn, free: freeView, mine: function () { return MINE; } }, polar: function () { var v = starVecByName('북극성'); return v ? C.enuToAltAz(C.apply(frame.M, v)) : null; } };
 })();
