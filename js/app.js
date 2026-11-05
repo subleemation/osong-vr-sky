@@ -946,14 +946,15 @@
         if (Math.abs(gx - b.x) < b.w / 2 + 0.02 && Math.abs(gy - b.y) < b.h / 2 + 0.02) { hit = b; break; }
       }
     }
-    if (!hit) { PANEL.id = null; PANEL.t = 0; return; }
-    if (PANEL.id !== hit.id) { PANEL.id = hit.id; PANEL.t = 0; PANEL.repeat = 0; return; }
+    if (!hit) { PANEL.id = null; PANEL.t = 0; PANEL.latched = false; return; }
+    if (PANEL.id !== hit.id) { PANEL.id = hit.id; PANEL.t = 0; PANEL.repeat = 0; PANEL.latched = false; return; }
+    if (PANEL.latched && !hit.rep) return;
     PANEL.t += dt;
     if (PANEL.t >= DWELL) {
       if (hit.rep) {
         PANEL.repeat += dt;
         if (PANEL.repeat >= REPEAT || PANEL.repeat === dt) { PANEL.repeat = 0.0001; applyBtn(hit.id); }
-      } else { applyBtn(hit.id); PANEL.id = null; PANEL.t = -0.8; }
+      } else { applyBtn(hit.id); PANEL.latched = true; PANEL.t = 0; }
     }
   }
   function drawPanel(view, fontPx) {
