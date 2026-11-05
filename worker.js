@@ -102,13 +102,11 @@ export class Room {
     const att = ws.deserializeAttachment() || { role: 'phone', mode: 'menu' };
     // ---- participant screens for the presenter (v2 "CCTV"): phones send small JPEG frames, only the room's watcher gets them ----
     if (m.k === 'watch') {
-      const now = Date.now(); let wk = await this.ctx.storage.get('wk');
-      if (!wk || now - wk.at > 24 * 3600 * 1000 || (typeof m.key === 'string' && safeEq(m.key, wk.key))) {
-        if (!wk || !(typeof m.key === 'string' && safeEq(m.key, wk.key))) { wk = { key: crypto.randomUUID().replace(/-/g, ''), at: now }; }
-        else wk.at = now;
-        await this.ctx.storage.put('wk', wk);
+      // A watcher must authenticate as a presenter. A first-come browser token
+      // is not authorization and can lock the actual presenter out.
+      if (this.env.ADMIN_KEY && safeEq(String(m.key || ''), String(this.env.ADMIN_KEY))) {
         att.role = 'watch'; ws.serializeAttachment(att);
-        ws.send(JSON.stringify({ k: 'watchok', key: wk.key }));
+        ws.send(JSON.stringify({ k: 'watchok' }));
       } else ws.send(JSON.stringify({ k: 'watchdeny' }));
       return;
     }
