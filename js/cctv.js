@@ -9,14 +9,20 @@
   var MODE = { vr: 'VR', screen: '화면', menu: '메뉴' };
   var ws = null, retry = 1000, tiles = {}, order = 0, denied = false;
 
-  function keyName() { return 'osong-cctvkey-' + room; }
+  function authenticateWatcher() {
+    if (!ws || ws.readyState !== 1 || !A.authed()) return;
+    var k = ''; try { k = sessionStorage.getItem('osong-key') || ''; } catch (e) {}
+    if (k) ws.send(JSON.stringify({ k: 'watch', key: k }));
+  }
+  window.addEventListener('focus', authenticateWatcher);
+  setInterval(authenticateWatcher, 2500);
   function connect() {
     var my; try { my = ws = new WebSocket(URL_ + '/ws?room=' + room); } catch (e) { setTimeout(connect, 5000); return; }
-    my.onopen = function () { retry = 1000; var k = null; try { k = localStorage.getItem(keyName()); } catch (e) {} my.send(JSON.stringify({ k: 'watch', key: k })); };
+    my.onopen = function () { retry = 1000; authenticateWatcher(); };
     my.onmessage = function (e) {
       if (my !== ws || e.data === 'pong') return;
       var m; try { m = JSON.parse(e.data); } catch (x) { return; }
-      if (m.k === 'watchok') { denied = false; try { localStorage.setItem(keyName(), m.key); } catch (x) {} render(); }
+      if (m.k === 'watchok') { denied = false; render(); }
       else if (m.k === 'watchdeny') { denied = true; render(); }
       else if (m.k === 'cam') show(m);
       else if (m.k === 'camgone') drop(m.id);
@@ -48,7 +54,7 @@
     $('cctvCount').textContent = n + '대';
     $('cctvWallCount').textContent = n + '대';
     $('cctvEmpty').hidden = n > 0;
-    $('cctvEmpty').textContent = denied ? '이 방의 화면은 다른 노트북에서 보고 있어요. 방 이름을 바꾸면 여기서 볼 수 있어요.' : '휴대폰이 들어오면 여기에 화면이 떠요.';
+    $('cctvEmpty').textContent = denied ? '화면 보기를 사용하려면 진행자로 로그인해 주세요.' : '휴대폰이 들어오면 여기에 화면이 떠요.';
   }
   setInterval(function () {
     var now = Date.now();
