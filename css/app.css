@@ -220,3 +220,12 @@ body.guest .solo-only { display: none !important; }
 body.guest .go { grid-template-columns: 1fr; }
 .card h3.mh { margin: 14px 0 6px; font-size: 14px; font-weight: 700; color: #e8cf8a; }
 .card h3.mh:first-of-type { margin-top: 2px; }
+
+/* screen mode: my own view sheet ('보기') */
+.hudR { display: flex; gap: 8px; }
+#viewSheet { position: absolute; z-index: 5; pointer-events: auto; top: calc(62px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
+  width: min(320px, calc(100vw - 24px)); padding: 12px 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+#viewSheet .vs-t { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+#viewSheet .chips { gap: 6px; }
+#viewSheet .vs-n { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+#viewSheet .vs-n:empty { display: none; }
