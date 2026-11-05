@@ -1979,7 +1979,15 @@
     if (mode === 'screen') { st.yaw = C.enuToAltAz(st.cam.f).az; st.pitch = 30; setTimeout(function () { $('hint').hidden = true; }, 4000); }
     lastInfoKey = '__';
     resize();
-    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { st.lock = l; }).catch(function () {}); } catch (e) {}
+    function requestWakeLock() {
+      if (!navigator.wakeLock || document.hidden || st.mode === 'menu') return;
+      if (st.lock && !st.lock.released) return;
+      navigator.wakeLock.request('screen').then(function (lock) { st.lock = lock; }).catch(function () {});
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) requestWakeLock();
+    });
+    requestWakeLock();
   }
   function leave() {
     st.mode = 'menu'; try { $('guide').hidden = true; } catch (e) {}
