@@ -64,7 +64,7 @@
       if (m.k === 'authok') { authed = true; $('login').hidden = true; try { sessionStorage.setItem('osong-key', key); } catch (x) {} }
       else if (m.k === 'authfail') {
         authed = false; $('login').hidden = false;
-        $('lerr').textContent = m.configured ? '비밀번호가 맞지 않아요' : '서버에 관리자 비밀번호가 아직 설정되지 않았어요';
+        $('lerr').textContent = !m.configured ? '서버에 관리자 비밀번호가 아직 설정되지 않았어요' : key ? '비밀번호가 맞지 않아요' : '';   // no message before anything was typed
         try { sessionStorage.removeItem('osong-key'); } catch (x) {}
         my.onclose = null; my.close();
       }
