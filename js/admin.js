@@ -140,7 +140,7 @@
   document.querySelectorAll('[data-hstep]').forEach(function (b) { b.addEventListener('click', function () { cmd('step', { v: +b.getAttribute('data-hstep') }); }); });
 
   // ---- what every phone draws ----
-  var DISP = [['art', '별자리 그림'], ['lines', '별자리 선'], ['names', '별자리 이름'], ['stars', '별 이름'], ['trails', '별의 궤적'], ['mw', '은하수'], ['dirs', '동서남북']];
+  var DISP = [['art', '별자리 그림'], ['lines', '별자리 선'], ['names', '별자리 이름'], ['stars', '별 이름'], ['mw', '은하수'], ['dirs', '동서남북']];
   DISP.forEach(function (d) {
     var lab = document.createElement('span'); lab.textContent = d[1];
     var seg = document.createElement('div'); seg.className = 'seg';
@@ -160,6 +160,16 @@
     });
   }
   setInterval(renderDisp, 500);
+
+  // ---- 일주운동 (star trails): off unless a story scene or this button turns it on ----
+  document.querySelectorAll('[data-trail]').forEach(function (b) { b.addEventListener('click', function () { cmd('trail', { v: +b.getAttribute('data-trail') }); }); });
+  function renderTrail() {
+    var t = ST && ST.trail, cs = curStory();
+    document.querySelectorAll('[data-trail]').forEach(function (b) { var h = +b.getAttribute('data-trail'); b.setAttribute('aria-pressed', (t ? t.h === h : h === 0) ? 'true' : 'false'); });
+    $('hTrailState').textContent = t ? '모든 폰에 지난 ' + t.h + '시간 동안의 별 궤적이 그려지고 있어요.' + (cs ? ' (이야기 장면에 궤적이 있으면 장면 연출이 먼저예요)' : '')
+      : '꺼져 있어요. 이야기 장면에 일주운동이 있으면 그 장면에서만 나와요.';
+  }
+  setInterval(renderTrail, 500);
 
   // ---- quiz ----
   (window.QUIZZES || []).forEach(function (q, i) {

@@ -376,7 +376,8 @@
     drawStoryPointer(view);
     var stTr = STORY.ev && STORY.ev.trails;
     if (stTr && stTr.p > 0) drawTrails(view, stTr.hours * 60 * stTr.p);
-    else if (opt('trails')) drawTrails(view, 120);
+    else if (NET.room && SYNC.has) { if (SYNC.trail) drawTrails(view, SYNC.trail.h * 60 * Math.min(1, (Date.now() - SYNC.trail.t0) / 6000)); }   // with a presenter: only 일주운동
+    else if (st.show.trails) drawTrails(view, 120);   // alone: the menu chip (off by default)
     // stars
     var lim = frame.lim, sizeK = Math.max(0.85, Math.min(2, Math.sqrt(view.f / 380))) * (view.vr ? 1.25 : 1);
     var M = frame.M, T = frame.T;
@@ -1263,6 +1264,7 @@
     SYNC.art = typeof s.art === 'boolean' ? s.art : null;
     SYNC.sky = C.skyOk(s.sky) ? s.sky : null;
     SYNC.disp = s.disp && typeof s.disp === 'object' ? s.disp : null;
+    SYNC.trail = s.trail && s.trail.h > 0 ? { h: +s.trail.h, t0: Date.now() - (s.trail.el || 0) } : null;
     SYNC.quiz = s.quiz && s.quiz.n ? s.quiz : null;
     setTimeout(renderSkyWhere, 0);
     SYNC.story = s.story && s.story.show ? { show: s.story.show, i: s.story.i | 0, t0: Date.now() - (s.story.el || 0), sky: !!s.story.sky } : null;
